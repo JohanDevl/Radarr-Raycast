@@ -1,19 +1,19 @@
 import React, { useState } from "react";
-import { Grid, ActionPanel, Action, showToast, Toast, Icon, Color } from "@raycast/api";
+import { Grid, ActionPanel, Action, showToast, Toast, Icon } from "@raycast/api";
 
-import { getRadarrInstances, getDefaultRadarrInstance } from "./config";
+import { getRadarrInstances, getActiveRadarrInstance } from "./config";
 import { useMovies } from "./hooks/useRadarrAPI";
-import { getMoviePoster, getMovieStatus } from "./utils";
+import { getMoviePoster } from "./utils";
 import type { Movie, RadarrInstance } from "./types";
 
 type AvailabilityFilter = "all" | "available" | "missing";
 
 export default function UnmonitoredMovies() {
-  const [selectedInstance, setSelectedInstance] = useState<RadarrInstance>(() => {
+  const [selectedInstance] = useState<RadarrInstance>(() => {
     try {
-      return getDefaultRadarrInstance();
+      return getActiveRadarrInstance();
     } catch (error) {
-      console.error("Failed to get default instance:", error);
+      console.error("Failed to get active instance:", error);
       showToast({
         style: Toast.Style.Failure,
         title: "Configuration Error",
@@ -38,7 +38,6 @@ export default function UnmonitoredMovies() {
 
   const movieGridItem = (movie: Movie) => {
     const poster = getMoviePoster(movie);
-    const status = getMovieStatus(movie);
 
     // Get availability status for unmonitored movies
     const isAvailable = movie.hasFile;
@@ -87,15 +86,12 @@ export default function UnmonitoredMovies() {
               <Action title="Refresh" icon={Icon.RotateClockwise} onAction={mutate} />
             </ActionPanel.Section>
             {instances.length > 1 && (
-              <ActionPanel.Section title="Switch Instance">
-                {instances.map((instance) => (
-                  <Action
-                    key={instance.name}
-                    title={`Switch to ${instance.name}`}
-                    icon={selectedInstance.name === instance.name ? Icon.Check : Icon.Circle}
-                    onAction={() => setSelectedInstance(instance)}
-                  />
-                ))}
+              <ActionPanel.Section title="Instance">
+                <Action.Open
+                  title="Switch Active Instance"
+                  target="raycast://extensions/preferences"
+                  icon={Icon.Gear}
+                />
               </ActionPanel.Section>
             )}
           </ActionPanel>
@@ -144,10 +140,7 @@ export default function UnmonitoredMovies() {
     .filter((movie) => {
       if (availabilityFilter === "all") return true;
       const isAvailable = movie.hasFile;
-      return (
-        (availabilityFilter === "available" && isAvailable) ||
-        (availabilityFilter === "missing" && !isAvailable)
-      );
+      return (availabilityFilter === "available" && isAvailable) || (availabilityFilter === "missing" && !isAvailable);
     })
     .sort((a, b) => a.sortTitle.localeCompare(b.sortTitle));
 

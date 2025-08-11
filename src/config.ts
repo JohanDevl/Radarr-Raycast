@@ -9,6 +9,7 @@ interface Preferences {
   secondaryInstanceName?: string;
   secondaryInstanceUrl?: string;
   secondaryInstanceApiKey?: string;
+  activeInstance?: "primary" | "secondary";
 }
 
 export function getRadarrInstances(): RadarrInstance[] {
@@ -45,19 +46,26 @@ export function getRadarrInstances(): RadarrInstance[] {
   return instances;
 }
 
-export function getDefaultRadarrInstance(): RadarrInstance {
+export function getActiveRadarrInstance(): RadarrInstance {
+  const preferences = getPreferenceValues<Preferences>();
   const instances = getRadarrInstances();
-  const defaultInstance = instances.find((instance) => instance.isDefault);
 
-  if (defaultInstance) {
-    return defaultInstance;
+  // If secondary instance is enabled and selected, use it
+  if (preferences.activeInstance === "secondary" && preferences.enableSecondaryInstance && instances.length > 1) {
+    return instances[1]; // Secondary instance
   }
 
+  // Otherwise use primary instance
   if (instances.length > 0) {
-    return instances[0];
+    return instances[0]; // Primary instance
   }
 
   throw new Error("No Radarr instances configured");
+}
+
+export function getDefaultRadarrInstance(): RadarrInstance {
+  // Keep for backward compatibility, but use active instance logic
+  return getActiveRadarrInstance();
 }
 
 export function validateRadarrInstance(instance: RadarrInstance): void {

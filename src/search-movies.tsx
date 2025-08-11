@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { List, ActionPanel, Action, showToast, Toast, LaunchProps, Icon } from "@raycast/api";
 
-import { getRadarrInstances, getDefaultRadarrInstance } from "./config";
+import { getRadarrInstances, getActiveRadarrInstance } from "./config";
 import { searchMovies, addMovie, getRootFolders, getQualityProfiles, useMovies } from "./hooks/useRadarrAPI";
 import { formatMovieTitle, getMoviePoster, getRatingDisplay, getGenresDisplay, truncateText } from "./utils";
 import type { MovieLookup, RadarrInstance } from "./types";
@@ -15,11 +15,11 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
   const [searchResults, setSearchResults] = useState<MovieLookup[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [existingMovies, setExistingMovies] = useState<Set<number>>(new Set());
-  const [selectedInstance, setSelectedInstance] = useState<RadarrInstance>(() => {
+  const [selectedInstance] = useState<RadarrInstance>(() => {
     try {
-      return getDefaultRadarrInstance();
+      return getActiveRadarrInstance();
     } catch (error) {
-      console.error("Failed to get default instance:", error);
+      console.error("Failed to get active instance:", error);
       showToast({
         style: Toast.Style.Failure,
         title: "Configuration Error",
@@ -217,15 +217,12 @@ ${movie.certification ? `- **Certification:** ${movie.certification}` : ""}`}
               )}
             </ActionPanel.Section>
             {instances.length > 1 && (
-              <ActionPanel.Section title="Switch Instance">
-                {instances.map((instance) => (
-                  <Action
-                    key={instance.name}
-                    title={`Switch to ${instance.name}`}
-                    icon={selectedInstance.name === instance.name ? Icon.Check : Icon.Circle}
-                    onAction={() => setSelectedInstance(instance)}
-                  />
-                ))}
+              <ActionPanel.Section title="Instance">
+                <Action.Open
+                  title="Switch Active Instance"
+                  target="raycast://extensions/preferences"
+                  icon={Icon.Gear}
+                />
               </ActionPanel.Section>
             )}
           </ActionPanel>

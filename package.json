@@ -64,6 +64,24 @@
       "title": "Second Instance API Key",
       "description": "API key for your second Radarr instance",
       "placeholder": "Enter second API key"
+    },
+    {
+      "name": "activeInstance",
+      "type": "dropdown",
+      "required": false,
+      "title": "Active Instance",
+      "description": "Choose which Radarr instance to use by default",
+      "default": "primary",
+      "data": [
+        {
+          "title": "Primary Instance",
+          "value": "primary"
+        },
+        {
+          "title": "Secondary Instance", 
+          "value": "secondary"
+        }
+      ]
     }
   ],
   "commands": [
@@ -112,8 +130,14 @@
       "mode": "view"
     },
     {
+      "name": "instance-switcher", 
+      "title": "Switch Radarr Instance",
+      "description": "Manage and switch between Radarr instances",
+      "mode": "view"
+    },
+    {
       "name": "system-status",
-      "title": "System Status",
+      "title": "System Status", 
       "description": "Check Radarr system health",
       "mode": "no-view"
     }

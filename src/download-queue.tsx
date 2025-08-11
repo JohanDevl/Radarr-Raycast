@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { List, ActionPanel, Action, showToast, Toast, Icon, Color, confirmAlert, Alert } from "@raycast/api";
 
-import { getRadarrInstances, getDefaultRadarrInstance } from "./config";
+import { getRadarrInstances, getActiveRadarrInstance } from "./config";
 import { useQueue, removeQueueItem } from "./hooks/useRadarrAPI";
 import { formatMovieTitle, formatFileSize, formatOverview } from "./utils";
-import type { QueueItem, RadarrInstance } from "./types";
+import type { QueueItem } from "./types";
 
 export default function DownloadQueue() {
-  const [selectedInstance, setSelectedInstance] = useState<RadarrInstance>(() => {
+  const selectedInstance = (() => {
     try {
-      return getDefaultRadarrInstance();
+      return getActiveRadarrInstance();
     } catch (error) {
-      console.error("Failed to get default instance:", error);
+      console.error("Failed to get active instance:", error);
       showToast({
         style: Toast.Style.Failure,
         title: "Configuration Error",
@@ -19,7 +19,7 @@ export default function DownloadQueue() {
       });
       return { name: "", url: "", apiKey: "", isDefault: true };
     }
-  });
+  })();
 
   const instances = (() => {
     try {
@@ -35,8 +35,8 @@ export default function DownloadQueue() {
 
   // Auto-refresh every 5 seconds if there are active downloads
   useEffect(() => {
-    const hasActiveDownloads = queueItems.some(item => item.status === "downloading");
-    
+    const hasActiveDownloads = queueItems.some((item) => item.status === "downloading");
+
     if (hasActiveDownloads) {
       const interval = setInterval(() => {
         mutate();
@@ -190,15 +190,12 @@ ${formatOverview(item.movie?.overview || "")}`}
               <Action title="Refresh" icon={Icon.RotateClockwise} onAction={mutate} />
             </ActionPanel.Section>
             {instances.length > 1 && (
-              <ActionPanel.Section title="Switch Instance">
-                {instances.map((instance) => (
-                  <Action
-                    key={instance.name}
-                    title={`Switch to ${instance.name}`}
-                    icon={selectedInstance.name === instance.name ? Icon.Check : Icon.Circle}
-                    onAction={() => setSelectedInstance(instance)}
-                  />
-                ))}
+              <ActionPanel.Section title="Instance">
+                <Action.Open
+                  title="Switch Active Instance"
+                  target="raycast://extensions/preferences"
+                  icon={Icon.Gear}
+                />
               </ActionPanel.Section>
             )}
           </ActionPanel>

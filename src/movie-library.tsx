@@ -1,29 +1,24 @@
 import React, { useState } from "react";
-import { Grid, ActionPanel, Action, showToast, Toast, Icon } from "@raycast/api";
+import { Grid, ActionPanel, Action, Icon } from "@raycast/api";
 
-import { getRadarrInstances, getDefaultRadarrInstance } from "./config";
+import { getRadarrInstances, getActiveRadarrInstance } from "./config";
 import { useMovies } from "./hooks/useRadarrAPI";
-import { getMoviePoster, getMovieStatus } from "./utils";
-import type { Movie, RadarrInstance } from "./types";
+import { getMoviePoster } from "./utils";
+import type { Movie } from "./types";
 
 type FileStatusFilter = "all" | "available" | "missing";
 
 export default function MovieLibrary() {
-  const [selectedInstance, setSelectedInstance] = useState<RadarrInstance>(() => {
+  const [fileStatusFilter, setFileStatusFilter] = useState<FileStatusFilter>("all");
+
+  const selectedInstance = (() => {
     try {
-      return getDefaultRadarrInstance();
+      return getActiveRadarrInstance();
     } catch (error) {
-      console.error("Failed to get default instance:", error);
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Configuration Error",
-        message: error instanceof Error ? error.message : "Failed to load Radarr configuration",
-      });
+      console.error("Failed to get active instance:", error);
       return { name: "", url: "", apiKey: "", isDefault: true };
     }
-  });
-
-  const [fileStatusFilter, setFileStatusFilter] = useState<FileStatusFilter>("all");
+  })();
 
   const instances = (() => {
     try {
@@ -61,7 +56,7 @@ export default function MovieLibrary() {
             <ActionPanel.Section>
               <Action.OpenInBrowser
                 title="Open in Radarr"
-                url={`${selectedInstance.url}/movie/${movie.tmdbId}`}
+                url={`${selectedInstance?.url}/movie/${movie.tmdbId}`}
                 icon={Icon.Globe}
               />
               {movie.movieFile && (
@@ -86,15 +81,12 @@ export default function MovieLibrary() {
               <Action title="Refresh" icon={Icon.RotateClockwise} onAction={mutate} />
             </ActionPanel.Section>
             {instances.length > 1 && (
-              <ActionPanel.Section title="Switch Instance">
-                {instances.map((instance) => (
-                  <Action
-                    key={instance.name}
-                    title={`Switch to ${instance.name}`}
-                    icon={selectedInstance.name === instance.name ? Icon.Check : Icon.Circle}
-                    onAction={() => setSelectedInstance(instance)}
-                  />
-                ))}
+              <ActionPanel.Section title="Instance">
+                <Action.Open
+                  title="Switch Active Instance"
+                  target="raycast://extensions/preferences"
+                  icon={Icon.Gear}
+                />
               </ActionPanel.Section>
             )}
           </ActionPanel>
@@ -143,8 +135,7 @@ export default function MovieLibrary() {
         .filter((movie) => {
           if (fileStatusFilter === "all") return true;
           return (
-            (fileStatusFilter === "available" && movie.hasFile) ||
-            (fileStatusFilter === "missing" && !movie.hasFile)
+            (fileStatusFilter === "available" && movie.hasFile) || (fileStatusFilter === "missing" && !movie.hasFile)
           );
         })
         .sort((a, b) => a.sortTitle.localeCompare(b.sortTitle))

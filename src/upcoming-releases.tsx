@@ -1,26 +1,19 @@
 import React, { useState } from "react";
-import { Grid, ActionPanel, Action, showToast, Toast, Icon, Color } from "@raycast/api";
+import { Grid, ActionPanel, Action, showToast, Toast, Icon } from "@raycast/api";
 
-import { getRadarrInstances, getDefaultRadarrInstance } from "./config";
+import { getRadarrInstances, getActiveRadarrInstance } from "./config";
 import { useCalendar } from "./hooks/useRadarrAPI";
-import {
-  formatMovieTitle,
-  getMoviePoster,
-  formatReleaseDate,
-  getGenresDisplay,
-  truncateText,
-  getMovieStatus,
-} from "./utils";
+import { getMoviePoster, formatReleaseDate } from "./utils";
 import type { CalendarMovie, RadarrInstance } from "./types";
 
 type MonitoringFilter = "all" | "monitored" | "unmonitored";
 
 export default function UpcomingReleases() {
-  const [selectedInstance, setSelectedInstance] = useState<RadarrInstance>(() => {
+  const [selectedInstance] = useState<RadarrInstance>(() => {
     try {
-      return getDefaultRadarrInstance();
+      return getActiveRadarrInstance();
     } catch (error) {
-      console.error("Failed to get default instance:", error);
+      console.error("Failed to get active instance:", error);
       showToast({
         style: Toast.Style.Failure,
         title: "Configuration Error",
@@ -56,7 +49,7 @@ export default function UpcomingReleases() {
     // Get next future release date
     const today = new Date();
     let nextReleaseDate = null;
-    
+
     // Check digital release first
     if (movie.digitalRelease && new Date(movie.digitalRelease) > today) {
       nextReleaseDate = movie.digitalRelease;
@@ -115,15 +108,12 @@ export default function UpcomingReleases() {
               <Action title="Refresh" icon={Icon.RotateClockwise} onAction={() => window.location.reload()} />
             </ActionPanel.Section>
             {instances.length > 1 && (
-              <ActionPanel.Section title="Switch Instance">
-                {instances.map((instance) => (
-                  <Action
-                    key={instance.name}
-                    title={`Switch to ${instance.name}`}
-                    icon={selectedInstance.name === instance.name ? Icon.Check : Icon.Circle}
-                    onAction={() => setSelectedInstance(instance)}
-                  />
-                ))}
+              <ActionPanel.Section title="Instance">
+                <Action.Open
+                  title="Switch Active Instance"
+                  target="raycast://extensions/preferences"
+                  icon={Icon.Gear}
+                />
               </ActionPanel.Section>
             )}
           </ActionPanel>
@@ -172,7 +162,7 @@ export default function UpcomingReleases() {
         .filter((movie) => {
           // Exclude movies that already have files available
           if (movie.hasFile) return false;
-          
+
           // Filter by monitoring status
           if (monitoringFilter === "all") return true;
           return (
@@ -182,7 +172,7 @@ export default function UpcomingReleases() {
         })
         .sort((a, b) => {
           const today = new Date();
-          
+
           // Get next future release date for movie A
           let dateA = "";
           if (a.digitalRelease && new Date(a.digitalRelease) > today) {
@@ -194,7 +184,7 @@ export default function UpcomingReleases() {
           } else {
             dateA = a.digitalRelease || a.inCinemas || a.physicalRelease || "";
           }
-          
+
           // Get next future release date for movie B
           let dateB = "";
           if (b.digitalRelease && new Date(b.digitalRelease) > today) {
@@ -206,12 +196,12 @@ export default function UpcomingReleases() {
           } else {
             dateB = b.digitalRelease || b.inCinemas || b.physicalRelease || "";
           }
-          
+
           // Sort by closest release date first
           if (!dateA && !dateB) return a.sortTitle.localeCompare(b.sortTitle);
           if (!dateA) return 1;
           if (!dateB) return -1;
-          
+
           return new Date(dateA).getTime() - new Date(dateB).getTime();
         })
     : [];

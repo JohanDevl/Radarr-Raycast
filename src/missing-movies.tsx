@@ -1,29 +1,24 @@
 import React, { useState } from "react";
-import { Grid, ActionPanel, Action, showToast, Toast, Icon, Color } from "@raycast/api";
+import { Grid, ActionPanel, Action, Icon, Color } from "@raycast/api";
 
-import { getRadarrInstances, getDefaultRadarrInstance } from "./config";
+import { getRadarrInstances, getActiveRadarrInstance } from "./config";
 import { useMissingMovies } from "./hooks/useRadarrAPI";
 import { getMoviePoster } from "./utils";
-import type { Movie, RadarrInstance } from "./types";
+import type { Movie } from "./types";
 
 type StatusFilter = "all" | "missing" | "upcoming" | "not-released";
 
 export default function MissingMovies() {
-  const [selectedInstance, setSelectedInstance] = useState<RadarrInstance>(() => {
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  const selectedInstance = (() => {
     try {
-      return getDefaultRadarrInstance();
+      return getActiveRadarrInstance();
     } catch (error) {
-      console.error("Failed to get default instance:", error);
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Configuration Error",
-        message: error instanceof Error ? error.message : "Failed to load Radarr configuration",
-      });
+      console.error("Failed to get active instance:", error);
       return { name: "", url: "", apiKey: "", isDefault: true };
     }
-  });
-
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  })();
 
   const instances = (() => {
     try {
@@ -126,15 +121,12 @@ export default function MissingMovies() {
               <Action title="Refresh" icon={Icon.RotateClockwise} onAction={mutate} />
             </ActionPanel.Section>
             {instances.length > 1 && (
-              <ActionPanel.Section title="Switch Instance">
-                {instances.map((instance) => (
-                  <Action
-                    key={instance.name}
-                    title={`Switch to ${instance.name}`}
-                    icon={selectedInstance.name === instance.name ? Icon.Check : Icon.Circle}
-                    onAction={() => setSelectedInstance(instance)}
-                  />
-                ))}
+              <ActionPanel.Section title="Instance">
+                <Action.Open
+                  title="Switch Active Instance"
+                  target="raycast://extensions/preferences"
+                  icon={Icon.Gear}
+                />
               </ActionPanel.Section>
             )}
           </ActionPanel>
