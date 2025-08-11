@@ -19,7 +19,7 @@ export default function DownloadQueue() {
     isLoading,
     error,
     mutate,
-  } = useQueue(selectedInstance || { name: "", url: "", apiKey: "", isDefault: false });
+  } = useQueue(selectedInstance);
   const queueItems = queueResponse?.records || [];
 
   // Auto-refresh every 5 seconds if there are active downloads

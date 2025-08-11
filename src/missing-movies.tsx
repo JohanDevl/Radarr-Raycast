@@ -23,7 +23,7 @@ export default function MissingMovies() {
     isLoading,
     error,
     mutate,
-  } = useMissingMovies(selectedInstance || { name: "", url: "", apiKey: "", isDefault: false });
+  } = useMissingMovies(selectedInstance);
   const missingMovies = missingMoviesResponse?.records;
 
   const getAvailabilityColor = (movie: Movie): Color => {

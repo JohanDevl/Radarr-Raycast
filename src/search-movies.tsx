@@ -22,9 +22,7 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
     switchToInstance,
   } = useInstanceManager();
 
-  const { data: existingMoviesList } = useMovies(
-    selectedInstance || { name: "", url: "", apiKey: "", isDefault: false },
-  );
+  const { data: existingMoviesList } = useMovies(selectedInstance);
 
   // Update existing movies set when movies or instance changes
   useEffect(() => {
@@ -36,7 +34,7 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
 
   // Force initial search if query is provided
   useEffect(() => {
-    if (props.arguments.query && props.arguments.query.trim() && selectedInstance?.url && selectedInstance.apiKey) {
+    if (props.arguments.query && props.arguments.query.trim() && selectedInstance?.url && selectedInstance?.apiKey) {
       setIsSearching(true);
       searchMovies(selectedInstance, props.arguments.query)
         .then((results) => setSearchResults(results))
@@ -50,7 +48,7 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (!searchText.trim() || !selectedInstance?.url || !selectedInstance.apiKey) {
+      if (!searchText.trim() || !selectedInstance?.url || !selectedInstance?.apiKey) {
         setSearchResults([]);
         return;
       }

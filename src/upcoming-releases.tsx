@@ -26,7 +26,7 @@ export default function UpcomingReleases() {
     isLoading,
     error,
   } = useCalendar(
-    selectedInstance || { name: "", url: "", apiKey: "", isDefault: false },
+    selectedInstance,
     today.toISOString().split("T")[0],
     twoMonthsFromNow.toISOString().split("T")[0],
   );

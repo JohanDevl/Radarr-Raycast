@@ -23,7 +23,7 @@ export default function MovieLibrary() {
     isLoading,
     error,
     mutate,
-  } = useMovies(selectedInstance || { name: "", url: "", apiKey: "", isDefault: false });
+  } = useMovies(selectedInstance);
 
   const movieGridItem = (movie: Movie) => {
     const poster = getMoviePoster(movie);

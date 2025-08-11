@@ -19,7 +19,7 @@ interface APIResponse<T> {
 }
 
 export function useRadarrAPI<T>(
-  instance: RadarrInstance,
+  instance: RadarrInstance | null,
   endpoint: string,
   options?: {
     execute?: boolean;
@@ -27,20 +27,23 @@ export function useRadarrAPI<T>(
     onData?: (data: T) => void;
   },
 ): APIResponse<T> {
-  const url = `${instance.url}/api/v3${endpoint}`;
+  // Don't execute if instance is not available or invalid
+  const shouldExecute = !!(instance?.url && instance?.apiKey) && (options?.execute !== false);
+  
+  const url = instance?.url ? `${instance.url}/api/v3${endpoint}` : "";
 
   const { data, error, isLoading, mutate } = useFetch<T>(url, {
     headers: {
-      "X-Api-Key": instance.apiKey,
+      "X-Api-Key": instance?.apiKey || "",
       "Content-Type": "application/json",
     },
-    execute: options?.execute !== false,
+    execute: shouldExecute,
     onError: (error) => {
-      console.error(`Radarr API Error (${instance.name}):`, error);
+      console.error(`Radarr API Error (${instance?.name || "Unknown"}):`, error);
       showToast({
         style: Toast.Style.Failure,
         title: "Radarr Error",
-        message: `Failed to connect to ${instance.name}: ${error.message}`,
+        message: `Failed to connect to ${instance?.name || "Radarr"}: ${error.message}`,
       });
       options?.onError?.(error);
     },
@@ -50,16 +53,16 @@ export function useRadarrAPI<T>(
   return { data, error, isLoading, mutate };
 }
 
-export function useMovies(instance: RadarrInstance) {
+export function useMovies(instance: RadarrInstance | null) {
   return useRadarrAPI<Movie[]>(instance, "/movie");
 }
 
-export function useQueue(instance: RadarrInstance) {
+export function useQueue(instance: RadarrInstance | null) {
   // Include movie details in queue response
   return useRadarrAPI<{ records: QueueItem[] }>(instance, "/queue?includeMovie=true");
 }
 
-export function useCalendar(instance: RadarrInstance, start?: string, end?: string) {
+export function useCalendar(instance: RadarrInstance | null, start?: string, end?: string) {
   const params = new URLSearchParams();
   if (start) params.set("start", start);
   if (end) params.set("end", end);
@@ -70,15 +73,15 @@ export function useCalendar(instance: RadarrInstance, start?: string, end?: stri
   return useRadarrAPI<CalendarMovie[]>(instance, endpoint);
 }
 
-export function useHealth(instance: RadarrInstance) {
+export function useHealth(instance: RadarrInstance | null) {
   return useRadarrAPI<HealthCheck[]>(instance, "/health");
 }
 
-export function useSystemStatus(instance: RadarrInstance) {
+export function useSystemStatus(instance: RadarrInstance | null) {
   return useRadarrAPI<SystemStatus>(instance, "/system/status");
 }
 
-export function useHistory(instance: RadarrInstance, movieId?: number) {
+export function useHistory(instance: RadarrInstance | null, movieId?: number) {
   const params = new URLSearchParams();
   if (movieId) params.set("movieId", movieId.toString());
   const endpoint = `/history${params.toString() ? `?${params.toString()}` : ""}`;
@@ -86,11 +89,15 @@ export function useHistory(instance: RadarrInstance, movieId?: number) {
   return useRadarrAPI<{ records: HistoryRecord[] }>(instance, endpoint);
 }
 
-export function useMissingMovies(instance: RadarrInstance) {
+export function useMissingMovies(instance: RadarrInstance | null) {
   return useRadarrAPI<{ records: Movie[] }>(instance, "/wanted/missing");
 }
 
-export async function searchMovies(instance: RadarrInstance, query: string): Promise<MovieLookup[]> {
+export async function searchMovies(instance: RadarrInstance | null, query: string): Promise<MovieLookup[]> {
+  if (!instance?.url || !instance?.apiKey) {
+    throw new Error("Invalid Radarr instance configuration");
+  }
+  
   try {
     const url = `${instance.url}/api/v3/movie/lookup?term=${encodeURIComponent(query)}`;
     const response = await fetch(url, {
@@ -117,13 +124,17 @@ export async function searchMovies(instance: RadarrInstance, query: string): Pro
 }
 
 export async function addMovie(
-  instance: RadarrInstance,
+  instance: RadarrInstance | null,
   movie: MovieLookup,
   qualityProfileId: number,
   rootFolderPath: string,
   monitored: boolean = true,
   searchOnAdd: boolean = true,
 ): Promise<Movie> {
+  if (!instance?.url || !instance?.apiKey) {
+    throw new Error("Invalid Radarr instance configuration");
+  }
+  
   try {
     const url = `${instance.url}/api/v3/movie`;
     const payload = {
@@ -183,7 +194,11 @@ export async function addMovie(
   }
 }
 
-export async function removeQueueItem(instance: RadarrInstance, id: number): Promise<void> {
+export async function removeQueueItem(instance: RadarrInstance | null, id: number): Promise<void> {
+  if (!instance?.url || !instance?.apiKey) {
+    throw new Error("Invalid Radarr instance configuration");
+  }
+  
   try {
     const url = `${instance.url}/api/v3/queue/${id}`;
     const response = await fetch(url, {
@@ -213,7 +228,11 @@ export async function removeQueueItem(instance: RadarrInstance, id: number): Pro
   }
 }
 
-export async function testConnection(instance: RadarrInstance): Promise<boolean> {
+export async function testConnection(instance: RadarrInstance | null): Promise<boolean> {
+  if (!instance?.url || !instance?.apiKey) {
+    return false;
+  }
+  
   try {
     const url = `${instance.url}/api/v3/system/status`;
     const response = await fetch(url, {
@@ -229,7 +248,11 @@ export async function testConnection(instance: RadarrInstance): Promise<boolean>
   }
 }
 
-export async function getRootFolders(instance: RadarrInstance): Promise<{ path: string; id: number }[]> {
+export async function getRootFolders(instance: RadarrInstance | null): Promise<{ path: string; id: number }[]> {
+  if (!instance?.url || !instance?.apiKey) {
+    throw new Error("Invalid Radarr instance configuration");
+  }
+  
   try {
     const url = `${instance.url}/api/v3/rootfolder`;
     const response = await fetch(url, {
@@ -251,7 +274,11 @@ export async function getRootFolders(instance: RadarrInstance): Promise<{ path: 
   }
 }
 
-export async function getQualityProfiles(instance: RadarrInstance): Promise<{ name: string; id: number }[]> {
+export async function getQualityProfiles(instance: RadarrInstance | null): Promise<{ name: string; id: number }[]> {
+  if (!instance?.url || !instance?.apiKey) {
+    throw new Error("Invalid Radarr instance configuration");
+  }
+  
   try {
     const url = `${instance.url}/api/v3/qualityprofile`;
     const response = await fetch(url, {
