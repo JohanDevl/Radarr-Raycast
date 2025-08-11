@@ -47,7 +47,7 @@ export default function MissingMovies() {
       return Color.Yellow; // Future release
     }
 
-    return Color.Red; // Available but missing
+    return Color.Red; // Missing (released but not downloaded)
   };
 
   const getAvailabilityStatus = (movie: Movie): string => {
@@ -62,15 +62,8 @@ export default function MissingMovies() {
       return "Upcoming";
     }
 
-    const daysSinceRelease = Math.floor((now.getTime() - releaseDate.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (daysSinceRelease < 30) {
-      return "Recent";
-    } else if (daysSinceRelease < 90) {
-      return "Available";
-    } else {
-      return "Long Available";
-    }
+    // If it's released and monitored but not downloaded, it's missing
+    return "Missing";
   };
 
   const movieGridItem = (movie: Movie) => {
