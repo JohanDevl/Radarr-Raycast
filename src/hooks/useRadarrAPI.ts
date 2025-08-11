@@ -228,3 +228,47 @@ export async function testConnection(instance: RadarrInstance): Promise<boolean>
     return false;
   }
 }
+
+export async function getRootFolders(instance: RadarrInstance): Promise<{ path: string; id: number }[]> {
+  try {
+    const url = `${instance.url}/api/v3/rootfolder`;
+    const response = await fetch(url, {
+      headers: {
+        "X-Api-Key": instance.apiKey,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const rootFolders = await response.json();
+    return rootFolders.map((rf: any) => ({ path: rf.path, id: rf.id }));
+  } catch (error) {
+    console.error("Failed to get root folders:", error);
+    return [];
+  }
+}
+
+export async function getQualityProfiles(instance: RadarrInstance): Promise<{ name: string; id: number }[]> {
+  try {
+    const url = `${instance.url}/api/v3/qualityprofile`;
+    const response = await fetch(url, {
+      headers: {
+        "X-Api-Key": instance.apiKey,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const profiles = await response.json();
+    return profiles.map((p: any) => ({ name: p.name, id: p.id }));
+  } catch (error) {
+    console.error("Failed to get quality profiles:", error);
+    return [];
+  }
+}

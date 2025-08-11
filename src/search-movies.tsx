@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { List, ActionPanel, Action, showToast, Toast, LaunchProps, Icon, Keyboard } from "@raycast/api";
+import { List, ActionPanel, Action, showToast, Toast, LaunchProps, Icon } from "@raycast/api";
 
 import { getRadarrInstances, getDefaultRadarrInstance } from "./config";
-import { searchMovies, addMovie } from "./hooks/useRadarrAPI";
+import { searchMovies, addMovie, getRootFolders, getQualityProfiles, useMovies } from "./hooks/useRadarrAPI";
 import { formatMovieTitle, getMoviePoster, getRatingDisplay, getGenresDisplay, truncateText } from "./utils";
 import type { MovieLookup, RadarrInstance } from "./types";
 
@@ -14,6 +14,7 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
   const [searchText, setSearchText] = useState(props.arguments.query || "");
   const [searchResults, setSearchResults] = useState<MovieLookup[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [existingMovies, setExistingMovies] = useState<Set<number>>(new Set());
   const [selectedInstance, setSelectedInstance] = useState<RadarrInstance>(() => {
     try {
       return getDefaultRadarrInstance();
@@ -37,9 +38,33 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
     }
   })();
 
+  const { data: existingMoviesList } = useMovies(selectedInstance);
+
+  // Update existing movies set when movies or instance changes
+  useEffect(() => {
+    if (existingMoviesList) {
+      const tmdbIds = new Set(existingMoviesList.map((movie) => movie.tmdbId));
+      setExistingMovies(tmdbIds);
+    }
+  }, [existingMoviesList, selectedInstance]);
+
+  // Force initial search if query is provided
+  useEffect(() => {
+    if (props.arguments.query && props.arguments.query.trim() && selectedInstance.url && selectedInstance.apiKey) {
+      setIsSearching(true);
+      searchMovies(selectedInstance, props.arguments.query)
+        .then((results) => setSearchResults(results))
+        .catch((error) => {
+          console.error("Initial search error:", error);
+          setSearchResults([]);
+        })
+        .finally(() => setIsSearching(false));
+    }
+  }, [selectedInstance.url, selectedInstance.apiKey]); // Only run when instance is ready
+
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (!searchText.trim()) {
+      if (!searchText.trim() || !selectedInstance.url || !selectedInstance.apiKey) {
         setSearchResults([]);
         return;
       }
@@ -60,11 +85,39 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
 
   const handleAddMovie = async (movie: MovieLookup) => {
     try {
+      // Get root folders and quality profiles
+      const [rootFolders, qualityProfiles] = await Promise.all([
+        getRootFolders(selectedInstance),
+        getQualityProfiles(selectedInstance),
+      ]);
+
+      if (rootFolders.length === 0) {
+        showToast({
+          style: Toast.Style.Failure,
+          title: "No Root Folders",
+          message: "Please configure root folders in Radarr first",
+        });
+        return;
+      }
+
+      if (qualityProfiles.length === 0) {
+        showToast({
+          style: Toast.Style.Failure,
+          title: "No Quality Profiles",
+          message: "Please configure quality profiles in Radarr first",
+        });
+        return;
+      }
+
+      // Use first available root folder and quality profile
+      const rootFolderPath = rootFolders[0].path;
+      const qualityProfileId = qualityProfiles[0].id;
+
       await addMovie(
         selectedInstance,
         movie,
-        1, // Default quality profile ID
-        "/movies", // Default root folder - this would need to be configured
+        qualityProfileId,
+        rootFolderPath,
         true, // Monitored
         true, // Search on add
       );
@@ -76,6 +129,11 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
       });
     } catch (error) {
       console.error("Add movie error:", error);
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to Add Movie",
+        message: error instanceof Error ? error.message : "Unknown error occurred",
+      });
     }
   };
 
@@ -85,10 +143,13 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
     const genres = getGenresDisplay(movie.genres);
     const overview = movie.overview ? truncateText(movie.overview, 150) : "No overview available";
 
+    // Check if movie is already in library using our manual verification
+    const isAlreadyAdded = existingMovies.has(movie.tmdbId);
+
     const accessories = [
       ...(rating ? [{ text: rating }] : []),
       ...(movie.runtime ? [{ text: `${movie.runtime}min` }] : []),
-      ...(movie.added ? [{ icon: Icon.Check, tooltip: "Already in library" }] : []),
+      ...(isAlreadyAdded ? [{ icon: Icon.Check, tooltip: "Already in library" }] : []),
     ];
 
     return (
@@ -102,7 +163,7 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
           <List.Item.Detail
             markdown={`# ${formatMovieTitle(movie)}
 
-${poster ? `![Poster](${poster})` : ""}
+${poster ? `<img src="${poster}" alt="Poster" width="200" />` : ""}
 
 ## Overview
 ${overview}
@@ -124,13 +185,14 @@ ${movie.certification ? `- **Certification:** ${movie.certification}` : ""}`}
         actions={
           <ActionPanel>
             <ActionPanel.Section>
-              {!movie.added && (
-                <Action
-                  title="Add Movie"
-                  icon={Icon.Plus}
-                  onAction={() => handleAddMovie(movie)}
-                  shortcut={Keyboard.Shortcut.Common.New}
+              {isAlreadyAdded ? (
+                <Action.OpenInBrowser
+                  title="Open in Radarr"
+                  url={`${selectedInstance.url}/movie/${movie.tmdbId}`}
+                  icon={Icon.Globe}
                 />
+              ) : (
+                <Action title="Add Movie" icon={Icon.Plus} onAction={() => handleAddMovie(movie)} />
               )}
               {movie.imdbId && (
                 <Action.OpenInBrowser
@@ -143,6 +205,13 @@ ${movie.certification ? `- **Certification:** ${movie.certification}` : ""}`}
                 <Action.OpenInBrowser
                   title="Open in Tmdb"
                   url={`https://themoviedb.org/movie/${movie.tmdbId}`}
+                  icon={Icon.Globe}
+                />
+              )}
+              {movie.title && (
+                <Action.OpenInBrowser
+                  title="Search in Tvdb"
+                  url={`https://www.thetvdb.com/search?query=${encodeURIComponent(movie.title)}`}
                   icon={Icon.Globe}
                 />
               )}
@@ -186,6 +255,7 @@ ${movie.certification ? `- **Certification:** ${movie.certification}` : ""}`}
     <List
       isLoading={isSearching}
       onSearchTextChange={setSearchText}
+      searchText={searchText}
       searchBarPlaceholder={`Search movies on ${selectedInstance.name}...`}
       throttle
       isShowingDetail
