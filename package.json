@@ -2,15 +2,63 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "radarr",
   "title": "Radarr",
-  "description": "",
+  "description": "Manage your Radarr movie collection with powerful search, monitoring, and download management capabilities",
   "icon": "extension-icon.png",
   "author": "xjo_nd",
   "license": "MIT",
+  "preferences": [
+    {
+      "name": "instances",
+      "type": "textfield",
+      "required": true,
+      "title": "Radarr Instances",
+      "description": "JSON configuration of Radarr instances: [{\"name\":\"Main\", \"url\":\"http://localhost:7878\", \"apiKey\":\"your-api-key\", \"isDefault\":true}]",
+      "placeholder": "[{\"name\":\"Main\", \"url\":\"http://localhost:7878\", \"apiKey\":\"your-api-key\", \"isDefault\":true}]"
+    }
+  ],
   "commands": [
     {
-      "name": "radarr",
-      "title": "Radarr",
-      "description": "",
+      "name": "search-movies",
+      "title": "Search Movies",
+      "description": "Search and add movies to Radarr",
+      "mode": "view",
+      "arguments": [
+        {
+          "name": "query",
+          "placeholder": "Movie name",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "upcoming-releases",
+      "title": "Upcoming Releases", 
+      "description": "View upcoming movie releases",
+      "mode": "view"
+    },
+    {
+      "name": "download-queue",
+      "title": "Download Queue",
+      "description": "Manage active downloads",
+      "mode": "view"
+    },
+    {
+      "name": "movie-library",
+      "title": "Movie Library",
+      "description": "Browse your movie collection",
+      "mode": "view"
+    },
+    {
+      "name": "missing-movies",
+      "title": "Missing Movies", 
+      "description": "View missing or wanted movies",
+      "mode": "view"
+    },
+    {
+      "name": "system-status",
+      "title": "System Status",
+      "description": "Check Radarr system health",
       "mode": "no-view"
     }
   ],
