@@ -84,7 +84,7 @@ export function useHistory(instance: RadarrInstance, movieId?: number) {
 }
 
 export function useMissingMovies(instance: RadarrInstance) {
-  return useRadarrAPI<Movie[]>(instance, "/wanted/missing");
+  return useRadarrAPI<{ records: Movie[] }>(instance, "/wanted/missing");
 }
 
 export async function searchMovies(instance: RadarrInstance, query: string): Promise<MovieLookup[]> {

@@ -37,7 +37,8 @@ export default function MissingMovies() {
     }
   })();
 
-  const { data: missingMovies, isLoading, error, mutate } = useMissingMovies(selectedInstance);
+  const { data: missingMoviesResponse, isLoading, error, mutate } = useMissingMovies(selectedInstance);
+  const missingMovies = missingMoviesResponse?.records;
 
   const getAvailabilityColor = (movie: Movie): Color => {
     if (!movie.inCinemas && !movie.digitalRelease && !movie.physicalRelease) {
