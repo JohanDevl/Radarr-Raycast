@@ -215,18 +215,19 @@ ${movie.folder ? `- **Movie Folder:** ${movie.folder}` : ""}`}
     );
   }
 
-  const sortedMovies =
-    missingMovies?.sort((a, b) => {
-      // Sort by release date, with most recent releases first
-      const dateA = a.inCinemas || a.digitalRelease || a.physicalRelease || "";
-      const dateB = b.inCinemas || b.digitalRelease || b.physicalRelease || "";
+  const sortedMovies = missingMovies
+    ? [...missingMovies].sort((a, b) => {
+        // Sort by release date, with most recent releases first
+        const dateA = a.inCinemas || a.digitalRelease || a.physicalRelease || "";
+        const dateB = b.inCinemas || b.digitalRelease || b.physicalRelease || "";
 
-      if (!dateA && !dateB) return a.sortTitle.localeCompare(b.sortTitle);
-      if (!dateA) return 1;
-      if (!dateB) return -1;
+        if (!dateA && !dateB) return a.sortTitle.localeCompare(b.sortTitle);
+        if (!dateA) return 1;
+        if (!dateB) return -1;
 
-      return new Date(dateB).getTime() - new Date(dateA).getTime();
-    }) || [];
+        return new Date(dateB).getTime() - new Date(dateA).getTime();
+      })
+    : [];
 
   return (
     <List
