@@ -1,15 +1,10 @@
 import React, { useState } from "react";
-import { List, ActionPanel, Action, showToast, Toast, Icon, Color } from "@raycast/api";
+import { Grid, ActionPanel, Action, showToast, Toast, Icon, Color } from "@raycast/api";
 
 import { getRadarrInstances, getDefaultRadarrInstance } from "./config";
 import { useMissingMovies } from "./hooks/useRadarrAPI";
 import {
-  formatMovieTitle,
   getMoviePoster,
-  getRatingDisplay,
-  getGenresDisplay,
-  truncateText,
-  formatReleaseDate,
 } from "./utils";
 import type { Movie, RadarrInstance } from "./types";
 
@@ -78,61 +73,32 @@ export default function MissingMovies() {
     }
   };
 
-  const movieListItem = (movie: Movie) => {
+  const movieGridItem = (movie: Movie) => {
     const poster = getMoviePoster(movie);
-    const rating = getRatingDisplay(movie);
-    const genres = getGenresDisplay(movie.genres);
-    const overview = movie.overview ? truncateText(movie.overview, 150) : "No overview available";
     const availabilityStatus = getAvailabilityStatus(movie);
     const availabilityColor = getAvailabilityColor(movie);
 
-    let releaseInfo = "";
-    if (movie.inCinemas) {
-      releaseInfo = `Cinema: ${formatReleaseDate(movie.inCinemas)}`;
-    }
-    if (movie.digitalRelease && movie.digitalRelease !== movie.inCinemas) {
-      if (releaseInfo) releaseInfo += " • ";
-      releaseInfo += `Digital: ${formatReleaseDate(movie.digitalRelease)}`;
-    }
-    if (movie.physicalRelease && movie.physicalRelease !== movie.digitalRelease) {
-      if (releaseInfo) releaseInfo += " • ";
-      releaseInfo += `Physical: ${formatReleaseDate(movie.physicalRelease)}`;
-    }
+    // Create subtitle with year and availability with colored indicator
+    const availabilityIcon =
+      availabilityColor === Color.Red
+        ? "🔴"
+        : availabilityColor === Color.Yellow
+          ? "🟡"
+          : availabilityColor === Color.SecondaryText
+            ? "⚪"
+            : "🟢";
+
+    const subtitle = `${movie.year} • ${availabilityIcon} ${availabilityStatus}`;
 
     return (
-      <List.Item
+      <Grid.Item
         key={movie.id}
-        icon={poster || Icon.QuestionMark}
-        title={formatMovieTitle(movie)}
-        subtitle={genres}
-        accessories={[{ tag: { value: availabilityStatus, color: availabilityColor } }]}
-        detail={
-          <List.Item.Detail
-            markdown={`# ${formatMovieTitle(movie)}
-
-${poster ? `![Poster](${poster})` : ""}
-
-## Overview
-${overview}
-
-## Release Information
-${releaseInfo || "Release dates not available"}
-
-## Details
-- **Status:** ${movie.status}
-- **Monitored:** ${movie.monitored ? "Yes" : "No"}
-- **Availability:** ${availabilityStatus}
-- **Runtime:** ${movie.runtime ? `${movie.runtime} minutes` : "Unknown"}
-- **Genres:** ${genres || "Not specified"}
-${rating ? `- **Ratings:** ${rating}` : ""}
-${movie.imdbId ? `- **IMDb:** [${movie.imdbId}](https://imdb.com/title/${movie.imdbId})` : ""}
-
-## Technical Details
-- **Quality Profile ID:** ${movie.qualityProfileId}
-- **Root Folder:** ${movie.rootFolderPath}
-${movie.folder ? `- **Movie Folder:** ${movie.folder}` : ""}`}
-          />
-        }
+        content={{
+          source: poster || Icon.Video,
+          fallback: Icon.Video,
+        }}
+        title={movie.title}
+        subtitle={subtitle}
         actions={
           <ActionPanel>
             <ActionPanel.Section>
@@ -184,8 +150,8 @@ ${movie.folder ? `- **Movie Folder:** ${movie.folder}` : ""}`}
 
   if (instances.length === 0) {
     return (
-      <List>
-        <List.EmptyView
+      <Grid>
+        <Grid.EmptyView
           title="No Radarr Instances Configured"
           description="Please configure your Radarr instances in preferences"
           icon={Icon.ExclamationMark}
@@ -195,14 +161,14 @@ ${movie.folder ? `- **Movie Folder:** ${movie.folder}` : ""}`}
             </ActionPanel>
           }
         />
-      </List>
+      </Grid>
     );
   }
 
   if (error) {
     return (
-      <List>
-        <List.EmptyView
+      <Grid>
+        <Grid.EmptyView
           title="Failed to Load Missing Movies"
           description={`Error: ${error.message}`}
           icon={Icon.ExclamationMark}
@@ -212,7 +178,7 @@ ${movie.folder ? `- **Movie Folder:** ${movie.folder}` : ""}`}
             </ActionPanel>
           }
         />
-      </List>
+      </Grid>
     );
   }
 
@@ -231,20 +197,22 @@ ${movie.folder ? `- **Movie Folder:** ${movie.folder}` : ""}`}
     : [];
 
   return (
-    <List
+    <Grid
       isLoading={isLoading}
       searchBarPlaceholder={`Search missing movies on ${selectedInstance.name}...`}
-      isShowingDetail
+      columns={5}
+      fit={Grid.Fit.Fill}
+      aspectRatio="3/4"
     >
       {sortedMovies.length === 0 ? (
-        <List.EmptyView
+        <Grid.EmptyView
           title="No Missing Movies"
           description="All monitored movies have been downloaded"
           icon={Icon.Check}
         />
       ) : (
-        sortedMovies.map(movieListItem)
+        sortedMovies.map(movieGridItem)
       )}
-    </List>
+    </Grid>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Grid, ActionPanel, Action, showToast, Toast, Icon, Color } from "@raycast/api";
+import { Grid, ActionPanel, Action, showToast, Toast, Icon } from "@raycast/api";
 
 import { getRadarrInstances, getDefaultRadarrInstance } from "./config";
 import { useMovies } from "./hooks/useRadarrAPI";
@@ -31,7 +31,6 @@ export default function MovieLibrary() {
   })();
 
   const { data: movies, isLoading, error, mutate } = useMovies(selectedInstance);
-
 
   const movieGridItem = (movie: Movie) => {
     const poster = getMoviePoster(movie);
