@@ -1,18 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
-import { getCurrentInstance, setCurrentInstance } from "../instance-manager";
-import { getRadarrInstances } from "../config";
+import { getActiveRadarrInstance, getRadarrInstances } from "../config";
 import type { RadarrInstance } from "../types";
 
 export function useInstanceManager() {
   const [currentInstance, setCurrentInstanceState] = useState<RadarrInstance | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadCurrentInstance = useCallback(async () => {
+  const loadDefaultInstance = useCallback(() => {
     try {
-      const instance = await getCurrentInstance();
+      const instance = getActiveRadarrInstance();
       setCurrentInstanceState(instance);
     } catch (error) {
-      console.error("Failed to load current instance:", error);
+      console.error("Failed to load default instance:", error);
       setCurrentInstanceState(null);
     } finally {
       setIsLoading(false);
@@ -20,17 +19,11 @@ export function useInstanceManager() {
   }, []);
 
   useEffect(() => {
-    loadCurrentInstance();
-  }, [loadCurrentInstance]);
+    loadDefaultInstance();
+  }, [loadDefaultInstance]);
 
-  const switchToInstance = useCallback(async (instance: RadarrInstance) => {
-    try {
-      await setCurrentInstance(instance);
-      setCurrentInstanceState(instance);
-    } catch (error) {
-      console.error("Failed to switch instance:", error);
-      throw error;
-    }
+  const switchToInstance = useCallback((instance: RadarrInstance) => {
+    setCurrentInstanceState(instance);
   }, []);
 
   const availableInstances = (() => {
@@ -46,6 +39,5 @@ export function useInstanceManager() {
     isLoading,
     availableInstances,
     switchToInstance,
-    refresh: loadCurrentInstance,
   };
 }
