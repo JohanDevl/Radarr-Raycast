@@ -62,6 +62,8 @@ export function useCalendar(instance: RadarrInstance, start?: string, end?: stri
   const params = new URLSearchParams();
   if (start) params.set("start", start);
   if (end) params.set("end", end);
+  // Include unmonitored movies in calendar
+  params.set("unmonitored", "true");
   const endpoint = `/calendar${params.toString() ? `?${params.toString()}` : ""}`;
 
   return useRadarrAPI<CalendarMovie[]>(instance, endpoint);

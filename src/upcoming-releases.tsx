@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { List, ActionPanel, Action, showToast, Toast, Icon, Color } from "@raycast/api";
+import { Grid, ActionPanel, Action, showToast, Toast, Icon, Color } from "@raycast/api";
 
 import { getRadarrInstances, getDefaultRadarrInstance } from "./config";
 import { useCalendar } from "./hooks/useRadarrAPI";
@@ -12,6 +12,8 @@ import {
   getMovieStatus,
 } from "./utils";
 import type { CalendarMovie, RadarrInstance } from "./types";
+
+type MonitoringFilter = "all" | "monitored" | "unmonitored";
 
 export default function UpcomingReleases() {
   const [selectedInstance, setSelectedInstance] = useState<RadarrInstance>(() => {
@@ -27,6 +29,8 @@ export default function UpcomingReleases() {
       return { name: "", url: "", apiKey: "", isDefault: true };
     }
   });
+
+  const [monitoringFilter, setMonitoringFilter] = useState<MonitoringFilter>("all");
 
   const instances = (() => {
     try {
@@ -46,54 +50,44 @@ export default function UpcomingReleases() {
     error,
   } = useCalendar(selectedInstance, today.toISOString().split("T")[0], twoMonthsFromNow.toISOString().split("T")[0]);
 
-  const movieListItem = (movie: CalendarMovie) => {
+  const movieGridItem = (movie: CalendarMovie) => {
     const poster = getMoviePoster(movie);
-    const genres = getGenresDisplay(movie.genres);
-    const overview = movie.overview ? truncateText(movie.overview, 150) : "No overview available";
-    const status = getMovieStatus(movie);
 
-    let releaseInfo = "";
-    if (movie.inCinemas) {
-      releaseInfo = `In Cinemas: ${formatReleaseDate(movie.inCinemas)}`;
+    // Get next future release date
+    const today = new Date();
+    let nextReleaseDate = null;
+    
+    // Check digital release first
+    if (movie.digitalRelease && new Date(movie.digitalRelease) > today) {
+      nextReleaseDate = movie.digitalRelease;
     }
-    if (movie.digitalRelease && movie.digitalRelease !== movie.inCinemas) {
-      if (releaseInfo) releaseInfo += " • ";
-      releaseInfo += `Digital: ${formatReleaseDate(movie.digitalRelease)}`;
+    // Then check cinema release
+    else if (movie.inCinemas && new Date(movie.inCinemas) > today) {
+      nextReleaseDate = movie.inCinemas;
     }
-    if (movie.physicalRelease && movie.physicalRelease !== movie.digitalRelease) {
-      if (releaseInfo) releaseInfo += " • ";
-      releaseInfo += `Physical: ${formatReleaseDate(movie.physicalRelease)}`;
+    // Finally check physical release
+    else if (movie.physicalRelease && new Date(movie.physicalRelease) > today) {
+      nextReleaseDate = movie.physicalRelease;
+    }
+    // If no future dates, use the latest available date
+    else {
+      nextReleaseDate = movie.digitalRelease || movie.inCinemas || movie.physicalRelease;
     }
 
-    const statusColor = movie.hasFile ? Color.Green : movie.monitored ? Color.Blue : Color.SecondaryText;
+    const formattedDate = nextReleaseDate ? formatReleaseDate(nextReleaseDate) : "TBA";
+
+    // Create subtitle with year and release date
+    const subtitle = `${movie.year} • ${formattedDate}`;
 
     return (
-      <List.Item
+      <Grid.Item
         key={movie.id}
-        icon={poster || Icon.Calendar}
-        title={formatMovieTitle(movie)}
-        subtitle={genres}
-        accessories={[{ tag: { value: status, color: statusColor } }]}
-        detail={
-          <List.Item.Detail
-            markdown={`# ${formatMovieTitle(movie)}
-
-${poster ? `![Poster](${poster})` : ""}
-
-## Overview
-${overview}
-
-## Release Information
-${releaseInfo}
-
-## Details
-- **Status:** ${status}
-- **Monitored:** ${movie.monitored ? "Yes" : "No"}
-- **Runtime:** ${movie.runtime ? `${movie.runtime} minutes` : "Unknown"}
-- **Genres:** ${genres || "Not specified"}
-${movie.imdbId ? `- **IMDb:** [${movie.imdbId}](https://imdb.com/title/${movie.imdbId})` : ""}`}
-          />
-        }
+        content={{
+          source: poster || Icon.Video,
+          fallback: Icon.Video,
+        }}
+        title={movie.title}
+        subtitle={subtitle}
         actions={
           <ActionPanel>
             <ActionPanel.Section>
@@ -117,6 +111,9 @@ ${movie.imdbId ? `- **IMDb:** [${movie.imdbId}](https://imdb.com/title/${movie.i
                 />
               )}
             </ActionPanel.Section>
+            <ActionPanel.Section>
+              <Action title="Refresh" icon={Icon.RotateClockwise} onAction={() => window.location.reload()} />
+            </ActionPanel.Section>
             {instances.length > 1 && (
               <ActionPanel.Section title="Switch Instance">
                 {instances.map((instance) => (
@@ -137,8 +134,8 @@ ${movie.imdbId ? `- **IMDb:** [${movie.imdbId}](https://imdb.com/title/${movie.i
 
   if (instances.length === 0) {
     return (
-      <List>
-        <List.EmptyView
+      <Grid>
+        <Grid.EmptyView
           title="No Radarr Instances Configured"
           description="Please configure your Radarr instances in preferences"
           icon={Icon.ExclamationMark}
@@ -148,14 +145,14 @@ ${movie.imdbId ? `- **IMDb:** [${movie.imdbId}](https://imdb.com/title/${movie.i
             </ActionPanel>
           }
         />
-      </List>
+      </Grid>
     );
   }
 
   if (error) {
     return (
-      <List>
-        <List.EmptyView
+      <Grid>
+        <Grid.EmptyView
           title="Failed to Load Calendar"
           description={`Error: ${error.message}`}
           icon={Icon.ExclamationMark}
@@ -165,30 +162,96 @@ ${movie.imdbId ? `- **IMDb:** [${movie.imdbId}](https://imdb.com/title/${movie.i
             </ActionPanel>
           }
         />
-      </List>
+      </Grid>
     );
   }
 
-  const sortedMovies =
-    calendarMovies?.sort((a, b) => {
-      const dateA = a.inCinemas || a.digitalRelease || a.physicalRelease || "";
-      const dateB = b.inCinemas || b.digitalRelease || b.physicalRelease || "";
-      return new Date(dateA).getTime() - new Date(dateB).getTime();
-    }) || [];
+  // Filter by monitoring status, exclude movies with files, and sort by release date (closest first)
+  const filteredAndSortedMovies = calendarMovies
+    ? calendarMovies
+        .filter((movie) => {
+          // Exclude movies that already have files available
+          if (movie.hasFile) return false;
+          
+          // Filter by monitoring status
+          if (monitoringFilter === "all") return true;
+          return (
+            (monitoringFilter === "monitored" && movie.monitored) ||
+            (monitoringFilter === "unmonitored" && !movie.monitored)
+          );
+        })
+        .sort((a, b) => {
+          const today = new Date();
+          
+          // Get next future release date for movie A
+          let dateA = "";
+          if (a.digitalRelease && new Date(a.digitalRelease) > today) {
+            dateA = a.digitalRelease;
+          } else if (a.inCinemas && new Date(a.inCinemas) > today) {
+            dateA = a.inCinemas;
+          } else if (a.physicalRelease && new Date(a.physicalRelease) > today) {
+            dateA = a.physicalRelease;
+          } else {
+            dateA = a.digitalRelease || a.inCinemas || a.physicalRelease || "";
+          }
+          
+          // Get next future release date for movie B
+          let dateB = "";
+          if (b.digitalRelease && new Date(b.digitalRelease) > today) {
+            dateB = b.digitalRelease;
+          } else if (b.inCinemas && new Date(b.inCinemas) > today) {
+            dateB = b.inCinemas;
+          } else if (b.physicalRelease && new Date(b.physicalRelease) > today) {
+            dateB = b.physicalRelease;
+          } else {
+            dateB = b.digitalRelease || b.inCinemas || b.physicalRelease || "";
+          }
+          
+          // Sort by closest release date first
+          if (!dateA && !dateB) return a.sortTitle.localeCompare(b.sortTitle);
+          if (!dateA) return 1;
+          if (!dateB) return -1;
+          
+          return new Date(dateA).getTime() - new Date(dateB).getTime();
+        })
+    : [];
 
   return (
-    <List
+    <Grid
       isLoading={isLoading}
       searchBarPlaceholder={`Search upcoming releases on ${selectedInstance.name}...`}
-      isShowingDetail
+      columns={5}
+      fit={Grid.Fit.Fill}
+      aspectRatio="3/4"
+      searchBarAccessory={
+        <Grid.Dropdown
+          tooltip="Filter by Monitoring Status"
+          value={monitoringFilter}
+          onChange={(value) => setMonitoringFilter(value as MonitoringFilter)}
+        >
+          <Grid.Dropdown.Item title="All Movies" value="all" />
+          <Grid.Dropdown.Item title="📡 Monitored" value="monitored" />
+          <Grid.Dropdown.Item title="⚫ Unmonitored" value="unmonitored" />
+        </Grid.Dropdown>
+      }
     >
-      <List.EmptyView
-        title="No Upcoming Releases"
-        description="No movies found in the next 2 months"
-        icon={Icon.Calendar}
-      />
-
-      {sortedMovies.map(movieListItem)}
-    </List>
+      {filteredAndSortedMovies.length === 0 ? (
+        <Grid.EmptyView
+          title={
+            monitoringFilter === "all"
+              ? "No Upcoming Releases"
+              : `No ${monitoringFilter.charAt(0).toUpperCase() + monitoringFilter.slice(1)} Releases`
+          }
+          description={
+            monitoringFilter === "all"
+              ? "No movies found in the next 2 months"
+              : `No ${monitoringFilter} movies found in the next 2 months`
+          }
+          icon={Icon.Calendar}
+        />
+      ) : (
+        filteredAndSortedMovies.map(movieGridItem)
+      )}
+    </Grid>
   );
 }
