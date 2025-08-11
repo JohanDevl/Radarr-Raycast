@@ -2,41 +2,47 @@ import { getPreferenceValues } from "@raycast/api";
 import type { RadarrInstance } from "./types";
 
 interface Preferences {
-  instances: string;
-}
-
-interface RawRadarrInstance {
-  name: string;
-  url: string;
-  apiKey: string;
-  isDefault?: boolean;
+  primaryInstanceName: string;
+  primaryInstanceUrl: string;
+  primaryInstanceApiKey: string;
+  enableSecondaryInstance?: boolean;
+  secondaryInstanceName?: string;
+  secondaryInstanceUrl?: string;
+  secondaryInstanceApiKey?: string;
 }
 
 export function getRadarrInstances(): RadarrInstance[] {
   const preferences = getPreferenceValues<Preferences>();
+  const instances: RadarrInstance[] = [];
 
-  try {
-    const instances = JSON.parse(preferences.instances);
-
-    if (!Array.isArray(instances)) {
-      throw new Error("Instances configuration must be an array");
-    }
-
-    return instances.map((instance: RawRadarrInstance, index: number) => {
-      if (!instance.name || !instance.url || !instance.apiKey) {
-        throw new Error(`Instance ${index + 1} is missing required fields (name, url, apiKey)`);
-      }
-
-      return {
-        name: instance.name,
-        url: instance.url.replace(/\/$/, ""), // Remove trailing slash
-        apiKey: instance.apiKey,
-        isDefault: instance.isDefault === true,
-      };
-    });
-  } catch (error) {
-    throw new Error(`Invalid instances configuration: ${error instanceof Error ? error.message : "Unknown error"}`);
+  // Primary instance (always present)
+  if (!preferences.primaryInstanceName || !preferences.primaryInstanceUrl || !preferences.primaryInstanceApiKey) {
+    throw new Error("Primary Radarr instance configuration is incomplete");
   }
+
+  instances.push({
+    name: preferences.primaryInstanceName,
+    url: preferences.primaryInstanceUrl.replace(/\/$/, ""), // Remove trailing slash
+    apiKey: preferences.primaryInstanceApiKey,
+    isDefault: true,
+  });
+
+  // Secondary instance (optional)
+  if (
+    preferences.enableSecondaryInstance &&
+    preferences.secondaryInstanceName &&
+    preferences.secondaryInstanceUrl &&
+    preferences.secondaryInstanceApiKey
+  ) {
+    instances.push({
+      name: preferences.secondaryInstanceName,
+      url: preferences.secondaryInstanceUrl.replace(/\/$/, ""), // Remove trailing slash
+      apiKey: preferences.secondaryInstanceApiKey,
+      isDefault: false,
+    });
+  }
+
+  return instances;
 }
 
 export function getDefaultRadarrInstance(): RadarrInstance {

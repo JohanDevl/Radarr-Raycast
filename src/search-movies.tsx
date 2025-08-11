@@ -1,14 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  List,
-  ActionPanel,
-  Action,
-  showToast,
-  Toast,
-  LaunchProps,
-  Icon,
-  Keyboard,
-} from "@raycast/api";
+import { List, ActionPanel, Action, showToast, Toast, LaunchProps, Icon, Keyboard } from "@raycast/api";
 
 import { getRadarrInstances, getDefaultRadarrInstance } from "./config";
 import { searchMovies, addMovie } from "./hooks/useRadarrAPI";

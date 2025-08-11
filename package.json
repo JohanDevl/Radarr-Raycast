@@ -8,12 +8,62 @@
   "license": "MIT",
   "preferences": [
     {
-      "name": "instances",
+      "name": "primaryInstanceName",
       "type": "textfield",
       "required": true,
-      "title": "Radarr Instances",
-      "description": "JSON configuration of Radarr instances: [{\"name\":\"Main\", \"url\":\"http://localhost:7878\", \"apiKey\":\"your-api-key\", \"isDefault\":true}]",
-      "placeholder": "[{\"name\":\"Main\", \"url\":\"http://localhost:7878\", \"apiKey\":\"your-api-key\", \"isDefault\":true}]"
+      "title": "Instance Name",
+      "description": "A friendly name for your Radarr instance",
+      "placeholder": "Main Server",
+      "default": "Main"
+    },
+    {
+      "name": "primaryInstanceUrl",
+      "type": "textfield",
+      "required": true,
+      "title": "Radarr URL",
+      "description": "The full URL to your Radarr instance",
+      "placeholder": "http://localhost:7878"
+    },
+    {
+      "name": "primaryInstanceApiKey",
+      "type": "password",
+      "required": true,
+      "title": "API Key",
+      "description": "Your Radarr API key (found in Settings > General)",
+      "placeholder": "Enter your API key"
+    },
+    {
+      "name": "enableSecondaryInstance",
+      "type": "checkbox",
+      "required": false,
+      "title": "Enable Second Instance",
+      "description": "Add a second Radarr instance",
+      "default": false,
+      "label": "Enable second Radarr instance"
+    },
+    {
+      "name": "secondaryInstanceName",
+      "type": "textfield",
+      "required": false,
+      "title": "Second Instance Name",
+      "description": "Name for your second Radarr instance",
+      "placeholder": "Remote Server"
+    },
+    {
+      "name": "secondaryInstanceUrl",
+      "type": "textfield",
+      "required": false,
+      "title": "Second Instance URL",
+      "description": "URL for your second Radarr instance",
+      "placeholder": "https://radarr.example.com"
+    },
+    {
+      "name": "secondaryInstanceApiKey",
+      "type": "password",
+      "required": false,
+      "title": "Second Instance API Key",
+      "description": "API key for your second Radarr instance",
+      "placeholder": "Enter second API key"
     }
   ],
   "commands": [
