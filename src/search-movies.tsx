@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { List, ActionPanel, Action, showToast, Toast, LaunchProps, Icon } from "@raycast/api";
+import { List, ActionPanel, Action, LaunchProps, Icon } from "@raycast/api";
 
 import { useInstanceManager } from "./hooks/useInstanceManager";
-import { searchMovies, addMovie, getRootFolders, getQualityProfiles, useMovies } from "./hooks/useRadarrAPI";
+import { searchMovies, useMovies } from "./hooks/useRadarrAPI";
 import { formatMovieTitle, getMoviePoster, getRatingDisplay, getGenresDisplay, truncateText } from "./utils";
 import type { MovieLookup } from "./types";
+import AddMovieForm from "./add-movie-form";
 
 interface Arguments {
   query?: string;
 }
 
 export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }>) {
-  const [searchText, setSearchText] = useState(props.arguments.query || "");
+  // Ensure searchText is always a string from the start
+  const initialQuery = props.arguments.query ?? "";
+  const [searchText, setSearchText] = useState(initialQuery);
   const [searchResults, setSearchResults] = useState<MovieLookup[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [existingMovies, setExistingMovies] = useState<Set<number>>(new Set());
@@ -23,6 +26,7 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
   } = useInstanceManager();
 
   const { data: existingMoviesList } = useMovies(selectedInstance);
+
 
   // Update existing movies set when movies or instance changes
   useEffect(() => {
@@ -66,60 +70,6 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
 
     return () => clearTimeout(timeoutId);
   }, [searchText, selectedInstance]);
-
-  const handleAddMovie = async (movie: MovieLookup) => {
-    try {
-      // Get root folders and quality profiles
-      const [rootFolders, qualityProfiles] = await Promise.all([
-        getRootFolders(selectedInstance),
-        getQualityProfiles(selectedInstance),
-      ]);
-
-      if (rootFolders.length === 0) {
-        showToast({
-          style: Toast.Style.Failure,
-          title: "No Root Folders",
-          message: "Please configure root folders in Radarr first",
-        });
-        return;
-      }
-
-      if (qualityProfiles.length === 0) {
-        showToast({
-          style: Toast.Style.Failure,
-          title: "No Quality Profiles",
-          message: "Please configure quality profiles in Radarr first",
-        });
-        return;
-      }
-
-      // Use first available root folder and quality profile
-      const rootFolderPath = rootFolders[0].path;
-      const qualityProfileId = qualityProfiles[0].id;
-
-      await addMovie(
-        selectedInstance,
-        movie,
-        qualityProfileId,
-        rootFolderPath,
-        true, // Monitored
-        true, // Search on add
-      );
-
-      showToast({
-        style: Toast.Style.Success,
-        title: "Movie Added",
-        message: `${formatMovieTitle(movie)} added successfully`,
-      });
-    } catch (error) {
-      console.error("Add movie error:", error);
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Failed to Add Movie",
-        message: error instanceof Error ? error.message : "Unknown error occurred",
-      });
-    }
-  };
 
   const movieListItem = (movie: MovieLookup) => {
     const poster = getMoviePoster(movie);
@@ -176,7 +126,11 @@ ${movie.certification ? `- **Certification:** ${movie.certification}` : ""}`}
                   icon={Icon.Globe}
                 />
               ) : (
-                <Action title="Add Movie" icon={Icon.Plus} onAction={() => handleAddMovie(movie)} />
+                <Action.Push
+                  title="Configure & Add"
+                  icon={Icon.Plus}
+                  target={<AddMovieForm movie={movie} instance={selectedInstance!} />}
+                />
               )}
               {movie.imdbId && (
                 <Action.OpenInBrowser
@@ -242,8 +196,9 @@ ${movie.certification ? `- **Certification:** ${movie.certification}` : ""}`}
 
   return (
     <List
+      key={`search-${selectedInstance?.name || "default"}`}
       isLoading={isSearching}
-      onSearchTextChange={setSearchText}
+      onSearchTextChange={(text) => setSearchText(text || "")}
       searchText={searchText}
       searchBarPlaceholder={`Search movies on ${selectedInstance?.name || "Radarr"}...`}
       throttle
