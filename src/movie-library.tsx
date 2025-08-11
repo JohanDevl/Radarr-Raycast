@@ -6,6 +6,8 @@ import { useMovies } from "./hooks/useRadarrAPI";
 import { getMoviePoster, getMovieStatus } from "./utils";
 import type { Movie, RadarrInstance } from "./types";
 
+type FileStatusFilter = "all" | "available" | "missing";
+
 export default function MovieLibrary() {
   const [selectedInstance, setSelectedInstance] = useState<RadarrInstance>(() => {
     try {
@@ -21,6 +23,8 @@ export default function MovieLibrary() {
     }
   });
 
+  const [fileStatusFilter, setFileStatusFilter] = useState<FileStatusFilter>("all");
+
   const instances = (() => {
     try {
       return getRadarrInstances();
@@ -34,10 +38,14 @@ export default function MovieLibrary() {
 
   const movieGridItem = (movie: Movie) => {
     const poster = getMoviePoster(movie);
-    const status = getMovieStatus(movie);
 
-    // Create subtitle with year and status
-    const subtitle = `${movie.year} • ${status}`;
+    // Get file availability status
+    const hasFile = movie.hasFile;
+    const fileIcon = hasFile ? "🟢" : "🔴";
+    const fileText = hasFile ? "Available" : "Missing";
+
+    // Create subtitle with year and file status
+    const subtitle = `${movie.year} • ${fileIcon} ${fileText}`;
 
     return (
       <Grid.Item
@@ -129,7 +137,18 @@ export default function MovieLibrary() {
     );
   }
 
-  const sortedMovies = movies?.sort((a, b) => a.sortTitle.localeCompare(b.sortTitle)) || [];
+  // Filter movies by file status and sort them
+  const filteredAndSortedMovies = movies
+    ? movies
+        .filter((movie) => {
+          if (fileStatusFilter === "all") return true;
+          return (
+            (fileStatusFilter === "available" && movie.hasFile) ||
+            (fileStatusFilter === "missing" && !movie.hasFile)
+          );
+        })
+        .sort((a, b) => a.sortTitle.localeCompare(b.sortTitle))
+    : [];
 
   return (
     <Grid
@@ -138,11 +157,34 @@ export default function MovieLibrary() {
       columns={5}
       fit={Grid.Fit.Fill}
       aspectRatio="3/4"
+      searchBarAccessory={
+        <Grid.Dropdown
+          tooltip="Filter by File Status"
+          value={fileStatusFilter}
+          onChange={(value) => setFileStatusFilter(value as FileStatusFilter)}
+        >
+          <Grid.Dropdown.Item title="All Movies" value="all" />
+          <Grid.Dropdown.Item title="🟢 Available" value="available" />
+          <Grid.Dropdown.Item title="🔴 Missing" value="missing" />
+        </Grid.Dropdown>
+      }
     >
-      {sortedMovies.length === 0 ? (
-        <Grid.EmptyView title="No Movies Found" description="Your movie library is empty" icon={Icon.Video} />
+      {filteredAndSortedMovies.length === 0 ? (
+        <Grid.EmptyView
+          title={
+            fileStatusFilter === "all"
+              ? "No Movies Found"
+              : `No ${fileStatusFilter.charAt(0).toUpperCase() + fileStatusFilter.slice(1)} Movies`
+          }
+          description={
+            fileStatusFilter === "all"
+              ? "Your movie library is empty"
+              : `No ${fileStatusFilter} movies found in your library`
+          }
+          icon={Icon.Video}
+        />
       ) : (
-        sortedMovies.map(movieGridItem)
+        filteredAndSortedMovies.map(movieGridItem)
       )}
     </Grid>
   );
