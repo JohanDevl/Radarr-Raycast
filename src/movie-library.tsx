@@ -3,10 +3,7 @@ import { Grid, ActionPanel, Action, showToast, Toast, Icon, Color } from "@rayca
 
 import { getRadarrInstances, getDefaultRadarrInstance } from "./config";
 import { useMovies } from "./hooks/useRadarrAPI";
-import {
-  getMoviePoster,
-  getMovieStatus,
-} from "./utils";
+import { getMoviePoster, getMovieStatus } from "./utils";
 import type { Movie, RadarrInstance } from "./types";
 
 export default function MovieLibrary() {
@@ -35,11 +32,6 @@ export default function MovieLibrary() {
 
   const { data: movies, isLoading, error, mutate } = useMovies(selectedInstance);
 
-  const getStatusColor = (movie: Movie): Color => {
-    if (movie.hasFile && movie.downloaded) return Color.Green;
-    if (movie.monitored) return Color.Blue;
-    return Color.SecondaryText;
-  };
 
   const movieGridItem = (movie: Movie) => {
     const poster = getMoviePoster(movie);
