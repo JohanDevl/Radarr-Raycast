@@ -1,40 +1,31 @@
 import React, { useState } from "react";
-import { Grid, ActionPanel, Action, showToast, Toast, Icon } from "@raycast/api";
+import { Grid, ActionPanel, Action, Icon } from "@raycast/api";
 
-import { getRadarrInstances, getActiveRadarrInstance } from "./config";
+import { useInstanceManager } from "./hooks/useInstanceManager";
 import { useMovies } from "./hooks/useRadarrAPI";
 import { getMoviePoster } from "./utils";
-import type { Movie, RadarrInstance } from "./types";
+import type { Movie } from "./types";
 
 type AvailabilityFilter = "all" | "available" | "missing";
 
 export default function UnmonitoredMovies() {
-  const [selectedInstance] = useState<RadarrInstance>(() => {
-    try {
-      return getActiveRadarrInstance();
-    } catch (error) {
-      console.error("Failed to get active instance:", error);
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Configuration Error",
-        message: error instanceof Error ? error.message : "Failed to load Radarr configuration",
-      });
-      return { name: "", url: "", apiKey: "", isDefault: true };
-    }
-  });
-
   const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>("all");
 
-  const instances = (() => {
-    try {
-      return getRadarrInstances();
-    } catch (error) {
-      console.error("Failed to get instances:", error);
-      return [];
-    }
-  })();
+  const {
+    currentInstance: selectedInstance,
+    isLoading: instanceLoading,
+    hasOverride,
+    availableInstances: instances,
+    switchToInstance,
+    resetToPreferences,
+  } = useInstanceManager();
 
-  const { data: movies, isLoading, error, mutate } = useMovies(selectedInstance);
+  const {
+    data: movies,
+    isLoading,
+    error,
+    mutate,
+  } = useMovies(selectedInstance || { name: "", url: "", apiKey: "", isDefault: false });
 
   const movieGridItem = (movie: Movie) => {
     const poster = getMoviePoster(movie);
@@ -61,7 +52,7 @@ export default function UnmonitoredMovies() {
             <ActionPanel.Section>
               <Action.OpenInBrowser
                 title="Open in Radarr"
-                url={`${selectedInstance.url}/movie/${movie.tmdbId}`}
+                url={`${selectedInstance?.url}/movie/${movie.tmdbId}`}
                 icon={Icon.Globe}
               />
               {movie.movieFile && (
@@ -87,11 +78,22 @@ export default function UnmonitoredMovies() {
             </ActionPanel.Section>
             {instances.length > 1 && (
               <ActionPanel.Section title="Instance">
-                <Action.Open
-                  title="Switch Active Instance"
-                  target="raycast://extensions/preferences"
-                  icon={Icon.Gear}
-                />
+                {instances.map((instance) => (
+                  <Action
+                    key={instance.name}
+                    title={`Switch to ${instance.name}`}
+                    icon={selectedInstance?.name === instance.name ? Icon.Check : Icon.Circle}
+                    onAction={() => switchToInstance(instance)}
+                  />
+                ))}
+                {hasOverride && (
+                  <Action
+                    title="Reset to Preferences"
+                    icon={Icon.ArrowCounterClockwise}
+                    onAction={resetToPreferences}
+                  />
+                )}
+                <Action.Open title="Open Preferences" target="raycast://extensions/preferences" icon={Icon.Gear} />
               </ActionPanel.Section>
             )}
           </ActionPanel>
@@ -99,6 +101,10 @@ export default function UnmonitoredMovies() {
       />
     );
   };
+
+  if (instanceLoading) {
+    return <Grid isLoading={true} />;
+  }
 
   if (instances.length === 0) {
     return (
@@ -147,7 +153,7 @@ export default function UnmonitoredMovies() {
   return (
     <Grid
       isLoading={isLoading}
-      searchBarPlaceholder={`Search unmonitored movies on ${selectedInstance.name}...`}
+      searchBarPlaceholder={`Search unmonitored movies on ${selectedInstance?.name || "Radarr"}...`}
       columns={5}
       fit={Grid.Fit.Fill}
       aspectRatio="3/4"

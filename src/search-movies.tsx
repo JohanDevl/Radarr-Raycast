@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { List, ActionPanel, Action, showToast, Toast, LaunchProps, Icon } from "@raycast/api";
 
-import { getRadarrInstances, getActiveRadarrInstance } from "./config";
+import { useInstanceManager } from "./hooks/useInstanceManager";
 import { searchMovies, addMovie, getRootFolders, getQualityProfiles, useMovies } from "./hooks/useRadarrAPI";
 import { formatMovieTitle, getMoviePoster, getRatingDisplay, getGenresDisplay, truncateText } from "./utils";
-import type { MovieLookup, RadarrInstance } from "./types";
+import type { MovieLookup } from "./types";
 
 interface Arguments {
   query?: string;
@@ -15,30 +15,18 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
   const [searchResults, setSearchResults] = useState<MovieLookup[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [existingMovies, setExistingMovies] = useState<Set<number>>(new Set());
-  const [selectedInstance] = useState<RadarrInstance>(() => {
-    try {
-      return getActiveRadarrInstance();
-    } catch (error) {
-      console.error("Failed to get active instance:", error);
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Configuration Error",
-        message: error instanceof Error ? error.message : "Failed to load Radarr configuration",
-      });
-      return { name: "", url: "", apiKey: "", isDefault: true };
-    }
-  });
+  const {
+    currentInstance: selectedInstance,
+    isLoading: instanceLoading,
+    hasOverride,
+    availableInstances: instances,
+    switchToInstance,
+    resetToPreferences,
+  } = useInstanceManager();
 
-  const instances = (() => {
-    try {
-      return getRadarrInstances();
-    } catch (error) {
-      console.error("Failed to get instances:", error);
-      return [];
-    }
-  })();
-
-  const { data: existingMoviesList } = useMovies(selectedInstance);
+  const { data: existingMoviesList } = useMovies(
+    selectedInstance || { name: "", url: "", apiKey: "", isDefault: false },
+  );
 
   // Update existing movies set when movies or instance changes
   useEffect(() => {
@@ -50,7 +38,7 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
 
   // Force initial search if query is provided
   useEffect(() => {
-    if (props.arguments.query && props.arguments.query.trim() && selectedInstance.url && selectedInstance.apiKey) {
+    if (props.arguments.query && props.arguments.query.trim() && selectedInstance?.url && selectedInstance.apiKey) {
       setIsSearching(true);
       searchMovies(selectedInstance, props.arguments.query)
         .then((results) => setSearchResults(results))
@@ -60,11 +48,11 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
         })
         .finally(() => setIsSearching(false));
     }
-  }, [selectedInstance.url, selectedInstance.apiKey]); // Only run when instance is ready
+  }, [selectedInstance?.url, selectedInstance?.apiKey]); // Only run when instance is ready
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (!searchText.trim() || !selectedInstance.url || !selectedInstance.apiKey) {
+      if (!searchText.trim() || !selectedInstance?.url || !selectedInstance.apiKey) {
         setSearchResults([]);
         return;
       }
@@ -188,7 +176,7 @@ ${movie.certification ? `- **Certification:** ${movie.certification}` : ""}`}
               {isAlreadyAdded ? (
                 <Action.OpenInBrowser
                   title="Open in Radarr"
-                  url={`${selectedInstance.url}/movie/${movie.tmdbId}`}
+                  url={`${selectedInstance?.url}/movie/${movie.tmdbId}`}
                   icon={Icon.Globe}
                 />
               ) : (
@@ -218,11 +206,22 @@ ${movie.certification ? `- **Certification:** ${movie.certification}` : ""}`}
             </ActionPanel.Section>
             {instances.length > 1 && (
               <ActionPanel.Section title="Instance">
-                <Action.Open
-                  title="Switch Active Instance"
-                  target="raycast://extensions/preferences"
-                  icon={Icon.Gear}
-                />
+                {instances.map((instance) => (
+                  <Action
+                    key={instance.name}
+                    title={`Switch to ${instance.name}`}
+                    icon={selectedInstance?.name === instance.name ? Icon.Check : Icon.Circle}
+                    onAction={() => switchToInstance(instance)}
+                  />
+                ))}
+                {hasOverride && (
+                  <Action
+                    title="Reset to Preferences"
+                    icon={Icon.ArrowCounterClockwise}
+                    onAction={resetToPreferences}
+                  />
+                )}
+                <Action.Open title="Open Preferences" target="raycast://extensions/preferences" icon={Icon.Gear} />
               </ActionPanel.Section>
             )}
           </ActionPanel>
@@ -230,6 +229,10 @@ ${movie.certification ? `- **Certification:** ${movie.certification}` : ""}`}
       />
     );
   };
+
+  if (instanceLoading) {
+    return <List isLoading={true} />;
+  }
 
   if (instances.length === 0) {
     return (
@@ -253,7 +256,7 @@ ${movie.certification ? `- **Certification:** ${movie.certification}` : ""}`}
       isLoading={isSearching}
       onSearchTextChange={setSearchText}
       searchText={searchText}
-      searchBarPlaceholder={`Search movies on ${selectedInstance.name}...`}
+      searchBarPlaceholder={`Search movies on ${selectedInstance?.name || "Radarr"}...`}
       throttle
       isShowingDetail
     >

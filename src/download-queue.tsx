@@ -1,36 +1,27 @@
 import React, { useEffect } from "react";
-import { List, ActionPanel, Action, showToast, Toast, Icon, Color, confirmAlert, Alert } from "@raycast/api";
+import { List, ActionPanel, Action, Icon, Color, confirmAlert, Alert } from "@raycast/api";
 
-import { getRadarrInstances, getActiveRadarrInstance } from "./config";
+import { useInstanceManager } from "./hooks/useInstanceManager";
 import { useQueue, removeQueueItem } from "./hooks/useRadarrAPI";
 import { formatMovieTitle, formatFileSize, formatOverview } from "./utils";
 import type { QueueItem } from "./types";
 
 export default function DownloadQueue() {
-  const selectedInstance = (() => {
-    try {
-      return getActiveRadarrInstance();
-    } catch (error) {
-      console.error("Failed to get active instance:", error);
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Configuration Error",
-        message: error instanceof Error ? error.message : "Failed to load Radarr configuration",
-      });
-      return { name: "", url: "", apiKey: "", isDefault: true };
-    }
-  })();
+  const {
+    currentInstance: selectedInstance,
+    isLoading: instanceLoading,
+    hasOverride,
+    availableInstances: instances,
+    switchToInstance,
+    resetToPreferences,
+  } = useInstanceManager();
 
-  const instances = (() => {
-    try {
-      return getRadarrInstances();
-    } catch (error) {
-      console.error("Failed to get instances:", error);
-      return [];
-    }
-  })();
-
-  const { data: queueResponse, isLoading, error, mutate } = useQueue(selectedInstance);
+  const {
+    data: queueResponse,
+    isLoading,
+    error,
+    mutate,
+  } = useQueue(selectedInstance || { name: "", url: "", apiKey: "", isDefault: false });
   const queueItems = queueResponse?.records || [];
 
   // Auto-refresh every 5 seconds if there are active downloads
@@ -174,7 +165,7 @@ ${formatOverview(item.movie?.overview || "")}`}
               {item.movie?.tmdbId && (
                 <Action.OpenInBrowser
                   title="Open Movie in Radarr"
-                  url={`${selectedInstance.url}/movie/${item.movie.tmdbId}`}
+                  url={`${selectedInstance?.url}/movie/${item.movie.tmdbId}`}
                   icon={Icon.Globe}
                 />
               )}
@@ -191,11 +182,22 @@ ${formatOverview(item.movie?.overview || "")}`}
             </ActionPanel.Section>
             {instances.length > 1 && (
               <ActionPanel.Section title="Instance">
-                <Action.Open
-                  title="Switch Active Instance"
-                  target="raycast://extensions/preferences"
-                  icon={Icon.Gear}
-                />
+                {instances.map((instance) => (
+                  <Action
+                    key={instance.name}
+                    title={`Switch to ${instance.name}`}
+                    icon={selectedInstance?.name === instance.name ? Icon.Check : Icon.Circle}
+                    onAction={() => switchToInstance(instance)}
+                  />
+                ))}
+                {hasOverride && (
+                  <Action
+                    title="Reset to Preferences"
+                    icon={Icon.ArrowCounterClockwise}
+                    onAction={resetToPreferences}
+                  />
+                )}
+                <Action.Open title="Open Preferences" target="raycast://extensions/preferences" icon={Icon.Gear} />
               </ActionPanel.Section>
             )}
           </ActionPanel>
@@ -203,6 +205,10 @@ ${formatOverview(item.movie?.overview || "")}`}
       />
     );
   };
+
+  if (instanceLoading) {
+    return <List isLoading={true} />;
+  }
 
   if (instances.length === 0) {
     return (
@@ -241,7 +247,7 @@ ${formatOverview(item.movie?.overview || "")}`}
   return (
     <List
       isLoading={isLoading}
-      searchBarPlaceholder={`Search download queue on ${selectedInstance.name}...`}
+      searchBarPlaceholder={`Search download queue on ${selectedInstance?.name || "Radarr"}...`}
       isShowingDetail
     >
       {queueItems.length === 0 ? (

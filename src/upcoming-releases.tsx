@@ -1,38 +1,24 @@
 import React, { useState } from "react";
-import { Grid, ActionPanel, Action, showToast, Toast, Icon } from "@raycast/api";
+import { Grid, ActionPanel, Action, Icon } from "@raycast/api";
 
-import { getRadarrInstances, getActiveRadarrInstance } from "./config";
+import { useInstanceManager } from "./hooks/useInstanceManager";
 import { useCalendar } from "./hooks/useRadarrAPI";
 import { getMoviePoster, formatReleaseDate } from "./utils";
-import type { CalendarMovie, RadarrInstance } from "./types";
+import type { CalendarMovie } from "./types";
 
 type MonitoringFilter = "all" | "monitored" | "unmonitored";
 
 export default function UpcomingReleases() {
-  const [selectedInstance] = useState<RadarrInstance>(() => {
-    try {
-      return getActiveRadarrInstance();
-    } catch (error) {
-      console.error("Failed to get active instance:", error);
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Configuration Error",
-        message: error instanceof Error ? error.message : "Failed to load Radarr configuration",
-      });
-      return { name: "", url: "", apiKey: "", isDefault: true };
-    }
-  });
-
   const [monitoringFilter, setMonitoringFilter] = useState<MonitoringFilter>("all");
 
-  const instances = (() => {
-    try {
-      return getRadarrInstances();
-    } catch (error) {
-      console.error("Failed to get instances:", error);
-      return [];
-    }
-  })();
+  const {
+    currentInstance: selectedInstance,
+    isLoading: instanceLoading,
+    hasOverride,
+    availableInstances: instances,
+    switchToInstance,
+    resetToPreferences,
+  } = useInstanceManager();
 
   const today = new Date();
   const twoMonthsFromNow = new Date(today.getTime() + 60 * 24 * 60 * 60 * 1000);
@@ -41,7 +27,11 @@ export default function UpcomingReleases() {
     data: calendarMovies,
     isLoading,
     error,
-  } = useCalendar(selectedInstance, today.toISOString().split("T")[0], twoMonthsFromNow.toISOString().split("T")[0]);
+  } = useCalendar(
+    selectedInstance || { name: "", url: "", apiKey: "", isDefault: false },
+    today.toISOString().split("T")[0],
+    twoMonthsFromNow.toISOString().split("T")[0],
+  );
 
   const movieGridItem = (movie: CalendarMovie) => {
     const poster = getMoviePoster(movie);
@@ -86,7 +76,7 @@ export default function UpcomingReleases() {
             <ActionPanel.Section>
               <Action.OpenInBrowser
                 title="Open in Radarr"
-                url={`${selectedInstance.url}/movie/${movie.tmdbId}`}
+                url={`${selectedInstance?.url}/movie/${movie.tmdbId}`}
                 icon={Icon.Globe}
               />
               {movie.imdbId && (
@@ -109,11 +99,22 @@ export default function UpcomingReleases() {
             </ActionPanel.Section>
             {instances.length > 1 && (
               <ActionPanel.Section title="Instance">
-                <Action.Open
-                  title="Switch Active Instance"
-                  target="raycast://extensions/preferences"
-                  icon={Icon.Gear}
-                />
+                {instances.map((instance) => (
+                  <Action
+                    key={instance.name}
+                    title={`Switch to ${instance.name}`}
+                    icon={selectedInstance?.name === instance.name ? Icon.Check : Icon.Circle}
+                    onAction={() => switchToInstance(instance)}
+                  />
+                ))}
+                {hasOverride && (
+                  <Action
+                    title="Reset to Preferences"
+                    icon={Icon.ArrowCounterClockwise}
+                    onAction={resetToPreferences}
+                  />
+                )}
+                <Action.Open title="Open Preferences" target="raycast://extensions/preferences" icon={Icon.Gear} />
               </ActionPanel.Section>
             )}
           </ActionPanel>
@@ -121,6 +122,10 @@ export default function UpcomingReleases() {
       />
     );
   };
+
+  if (instanceLoading) {
+    return <Grid isLoading={true} />;
+  }
 
   if (instances.length === 0) {
     return (
@@ -209,7 +214,7 @@ export default function UpcomingReleases() {
   return (
     <Grid
       isLoading={isLoading}
-      searchBarPlaceholder={`Search upcoming releases on ${selectedInstance.name}...`}
+      searchBarPlaceholder={`Search upcoming releases on ${selectedInstance?.name || "Radarr"}...`}
       columns={5}
       fit={Grid.Fit.Fill}
       aspectRatio="3/4"

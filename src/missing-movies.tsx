@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Grid, ActionPanel, Action, Icon, Color } from "@raycast/api";
 
-import { getRadarrInstances, getActiveRadarrInstance } from "./config";
+import { useInstanceManager } from "./hooks/useInstanceManager";
 import { useMissingMovies } from "./hooks/useRadarrAPI";
 import { getMoviePoster } from "./utils";
 import type { Movie } from "./types";
@@ -11,25 +11,21 @@ type StatusFilter = "all" | "missing" | "upcoming" | "not-released";
 export default function MissingMovies() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  const selectedInstance = (() => {
-    try {
-      return getActiveRadarrInstance();
-    } catch (error) {
-      console.error("Failed to get active instance:", error);
-      return { name: "", url: "", apiKey: "", isDefault: true };
-    }
-  })();
+  const {
+    currentInstance: selectedInstance,
+    isLoading: instanceLoading,
+    hasOverride,
+    availableInstances: instances,
+    switchToInstance,
+    resetToPreferences,
+  } = useInstanceManager();
 
-  const instances = (() => {
-    try {
-      return getRadarrInstances();
-    } catch (error) {
-      console.error("Failed to get instances:", error);
-      return [];
-    }
-  })();
-
-  const { data: missingMoviesResponse, isLoading, error, mutate } = useMissingMovies(selectedInstance);
+  const {
+    data: missingMoviesResponse,
+    isLoading,
+    error,
+    mutate,
+  } = useMissingMovies(selectedInstance || { name: "", url: "", apiKey: "", isDefault: false });
   const missingMovies = missingMoviesResponse?.records;
 
   const getAvailabilityColor = (movie: Movie): Color => {
@@ -94,7 +90,7 @@ export default function MissingMovies() {
             <ActionPanel.Section>
               <Action.OpenInBrowser
                 title="Open in Radarr"
-                url={`${selectedInstance.url}/movie/${movie.tmdbId}`}
+                url={`${selectedInstance?.url}/movie/${movie.tmdbId}`}
                 icon={Icon.Globe}
               />
               <Action.OpenInBrowser
@@ -122,11 +118,22 @@ export default function MissingMovies() {
             </ActionPanel.Section>
             {instances.length > 1 && (
               <ActionPanel.Section title="Instance">
-                <Action.Open
-                  title="Switch Active Instance"
-                  target="raycast://extensions/preferences"
-                  icon={Icon.Gear}
-                />
+                {instances.map((instance) => (
+                  <Action
+                    key={instance.name}
+                    title={`Switch to ${instance.name}`}
+                    icon={selectedInstance?.name === instance.name ? Icon.Check : Icon.Circle}
+                    onAction={() => switchToInstance(instance)}
+                  />
+                ))}
+                {hasOverride && (
+                  <Action
+                    title="Reset to Preferences"
+                    icon={Icon.ArrowCounterClockwise}
+                    onAction={resetToPreferences}
+                  />
+                )}
+                <Action.Open title="Open Preferences" target="raycast://extensions/preferences" icon={Icon.Gear} />
               </ActionPanel.Section>
             )}
           </ActionPanel>
@@ -134,6 +141,10 @@ export default function MissingMovies() {
       />
     );
   };
+
+  if (instanceLoading) {
+    return <Grid isLoading={true} />;
+  }
 
   if (instances.length === 0) {
     return (
@@ -196,7 +207,7 @@ export default function MissingMovies() {
   return (
     <Grid
       isLoading={isLoading}
-      searchBarPlaceholder={`Search missing movies on ${selectedInstance.name}...`}
+      searchBarPlaceholder={`Search missing movies on ${selectedInstance?.name || "Radarr"}...`}
       columns={5}
       fit={Grid.Fit.Fill}
       aspectRatio="3/4"
