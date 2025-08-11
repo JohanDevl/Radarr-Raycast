@@ -3,7 +3,7 @@
   "name": "radarr",
   "title": "Radarr",
   "description": "Manage your Radarr movie collection with powerful search, monitoring, and download management capabilities",
-  "icon": "extension-icon.png",
+  "icon": "radarr.svg",
   "author": "xjo_nd",
   "license": "MIT",
   "preferences": [
