@@ -27,7 +27,6 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
 
   const { data: existingMoviesList } = useMovies(selectedInstance);
 
-
   // Update existing movies set when movies or instance changes
   useEffect(() => {
     if (existingMoviesList) {
