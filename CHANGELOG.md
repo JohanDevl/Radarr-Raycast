@@ -5,9 +5,10 @@ All notable changes to this Raycast extension will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Initial Version] - 2025-08-11
+## [Initial Version] - {PR_MERGE_DATE}
 
 ### Added
+
 - **Search Movies** - Search TMDB and add movies to Radarr with configurable quality profiles and root folders
 - **Movie Library** - Browse existing movie collection with grid view, detailed information, and management actions
 - **Missing Movies** - View wanted/missing movies with availability status and search capabilities
@@ -18,12 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **System Status** - Background health checks with notifications (no-view command)
 
 ### Multi-Instance Support
+
 - Configure primary and optional secondary Radarr instances
 - Preference-based default instance selection
 - Temporary instance switching within commands via action panels
 - Connection status monitoring for all configured instances
 
 ### User Experience
+
 - Real-time search with debounced API calls (500ms delay)
 - Rich detail views with movie posters and comprehensive metadata
 - Context-aware action panels with relevant operations per command
@@ -32,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Intelligent caching for optimal performance
 
 ### Technical Features
+
 - Full Radarr V3 API integration with X-Api-Key authentication
 - TypeScript implementation with strict typing
 - Reusable API hooks with comprehensive error handling
@@ -40,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Memory-efficient background operations
 
 ### Configuration Options
+
 - Primary instance: name, URL, and API key configuration
 - Secondary instance: optional additional Radarr instance
 - Active instance selection for default behavior
