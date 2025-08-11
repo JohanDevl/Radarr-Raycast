@@ -18,10 +18,8 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
   const {
     currentInstance: selectedInstance,
     isLoading: instanceLoading,
-    hasOverride,
     availableInstances: instances,
     switchToInstance,
-    resetToPreferences,
   } = useInstanceManager();
 
   const { data: existingMoviesList } = useMovies(
@@ -214,13 +212,6 @@ ${movie.certification ? `- **Certification:** ${movie.certification}` : ""}`}
                     onAction={() => switchToInstance(instance)}
                   />
                 ))}
-                {hasOverride && (
-                  <Action
-                    title="Reset to Preferences"
-                    icon={Icon.ArrowCounterClockwise}
-                    onAction={resetToPreferences}
-                  />
-                )}
                 <Action.Open title="Open Preferences" target="raycast://extensions/preferences" icon={Icon.Gear} />
               </ActionPanel.Section>
             )}
