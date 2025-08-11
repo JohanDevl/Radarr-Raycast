@@ -5,6 +5,10 @@
   "description": "Manage your Radarr movie collection with powerful search, monitoring, and download management capabilities",
   "icon": "radarr.png",
   "author": "xjo_nd",
+  "categories": [
+    "Media",
+    "Other"
+  ],
   "license": "MIT",
   "preferences": [
     {
@@ -78,7 +82,7 @@
           "value": "primary"
         },
         {
-          "title": "Secondary Instance", 
+          "title": "Secondary Instance",
           "value": "secondary"
         }
       ]
@@ -130,14 +134,14 @@
       "mode": "view"
     },
     {
-      "name": "instance-switcher", 
+      "name": "instance-switcher",
       "title": "Switch Radarr Instance",
       "description": "Manage and switch between Radarr instances",
       "mode": "view"
     },
     {
       "name": "system-status",
-      "title": "System Status", 
+      "title": "System Status",
       "description": "Check Radarr system health",
       "mode": "no-view"
     }
