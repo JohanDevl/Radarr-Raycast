@@ -106,6 +106,12 @@
       "mode": "view"
     },
     {
+      "name": "unmonitored-movies",
+      "title": "Unmonitored Movies",
+      "description": "View movies that are not being monitored",
+      "mode": "view"
+    },
+    {
       "name": "system-status",
       "title": "System Status",
       "description": "Check Radarr system health",

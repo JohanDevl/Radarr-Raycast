@@ -2,13 +2,13 @@ import React, { useState } from "react";
 import { Grid, ActionPanel, Action, showToast, Toast, Icon, Color } from "@raycast/api";
 
 import { getRadarrInstances, getDefaultRadarrInstance } from "./config";
-import { useMissingMovies } from "./hooks/useRadarrAPI";
-import { getMoviePoster } from "./utils";
+import { useMovies } from "./hooks/useRadarrAPI";
+import { getMoviePoster, getMovieStatus } from "./utils";
 import type { Movie, RadarrInstance } from "./types";
 
-type StatusFilter = "all" | "missing" | "upcoming" | "not-released";
+type AvailabilityFilter = "all" | "available" | "missing";
 
-export default function MissingMovies() {
+export default function UnmonitoredMovies() {
   const [selectedInstance, setSelectedInstance] = useState<RadarrInstance>(() => {
     try {
       return getDefaultRadarrInstance();
@@ -23,7 +23,7 @@ export default function MissingMovies() {
     }
   });
 
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>("all");
 
   const instances = (() => {
     try {
@@ -34,56 +34,19 @@ export default function MissingMovies() {
     }
   })();
 
-  const { data: missingMoviesResponse, isLoading, error, mutate } = useMissingMovies(selectedInstance);
-  const missingMovies = missingMoviesResponse?.records;
-
-  const getAvailabilityColor = (movie: Movie): Color => {
-    if (!movie.inCinemas && !movie.digitalRelease && !movie.physicalRelease) {
-      return Color.SecondaryText; // Not released yet
-    }
-
-    const now = new Date();
-    const releaseDate = new Date(movie.inCinemas || movie.digitalRelease || movie.physicalRelease || "");
-
-    if (releaseDate > now) {
-      return Color.Yellow; // Future release
-    }
-
-    return Color.Red; // Missing (released but not downloaded)
-  };
-
-  const getAvailabilityStatus = (movie: Movie): string => {
-    if (!movie.inCinemas && !movie.digitalRelease && !movie.physicalRelease) {
-      return "Not Released";
-    }
-
-    const now = new Date();
-    const releaseDate = new Date(movie.inCinemas || movie.digitalRelease || movie.physicalRelease || "");
-
-    if (releaseDate > now) {
-      return "Upcoming";
-    }
-
-    // If it's released and monitored but not downloaded, it's missing
-    return "Missing";
-  };
+  const { data: movies, isLoading, error, mutate } = useMovies(selectedInstance);
 
   const movieGridItem = (movie: Movie) => {
     const poster = getMoviePoster(movie);
-    const availabilityStatus = getAvailabilityStatus(movie);
-    const availabilityColor = getAvailabilityColor(movie);
+    const status = getMovieStatus(movie);
 
-    // Create subtitle with year and availability with colored indicator
-    const availabilityIcon =
-      availabilityColor === Color.Red
-        ? "🔴"
-        : availabilityColor === Color.Yellow
-          ? "🟡"
-          : availabilityColor === Color.SecondaryText
-            ? "⚪"
-            : "🟢";
+    // Get availability status for unmonitored movies
+    const isAvailable = movie.hasFile;
+    const availabilityIcon = isAvailable ? "🟢" : "🟡";
+    const availabilityText = isAvailable ? "Available" : "Missing";
 
-    const subtitle = `${movie.year} • ${availabilityIcon} ${availabilityStatus}`;
+    // Create subtitle with year, availability and status
+    const subtitle = `${movie.year} • ${availabilityIcon} ${availabilityText}`;
 
     return (
       <Grid.Item
@@ -102,11 +65,9 @@ export default function MissingMovies() {
                 url={`${selectedInstance.url}/movie/${movie.tmdbId}`}
                 icon={Icon.Globe}
               />
-              <Action.OpenInBrowser
-                title="Search for Movie"
-                url={`${selectedInstance.url}/movie/${movie.tmdbId}#search`}
-                icon={Icon.MagnifyingGlass}
-              />
+              {movie.movieFile && (
+                <Action.CopyToClipboard title="Copy File Path" content={movie.movieFile.path} icon={Icon.Clipboard} />
+              )}
               {movie.imdbId && (
                 <Action.OpenInBrowser
                   title="Open in Imdb"
@@ -164,7 +125,7 @@ export default function MissingMovies() {
     return (
       <Grid>
         <Grid.EmptyView
-          title="Failed to Load Missing Movies"
+          title="Failed to Load Movies"
           description={`Error: ${error.message}`}
           icon={Icon.ExclamationMark}
           actions={
@@ -177,63 +138,51 @@ export default function MissingMovies() {
     );
   }
 
-  const filteredAndSortedMovies = missingMovies
-    ? [...missingMovies]
-        .filter((movie) => {
-          if (statusFilter === "all") return true;
-          const status = getAvailabilityStatus(movie);
-          return (
-            (statusFilter === "missing" && status === "Missing") ||
-            (statusFilter === "upcoming" && status === "Upcoming") ||
-            (statusFilter === "not-released" && status === "Not Released")
-          );
-        })
-        .sort((a, b) => {
-          // Sort by release date, with most recent releases first
-          const dateA = a.inCinemas || a.digitalRelease || a.physicalRelease || "";
-          const dateB = b.inCinemas || b.digitalRelease || b.physicalRelease || "";
-
-          if (!dateA && !dateB) return a.sortTitle.localeCompare(b.sortTitle);
-          if (!dateA) return 1;
-          if (!dateB) return -1;
-
-          return new Date(dateB).getTime() - new Date(dateA).getTime();
-        })
-    : [];
+  // Filter only unmonitored movies, then by availability, and sort them
+  const unmonitoredMovies = movies?.filter((movie) => !movie.monitored) || [];
+  const filteredAndSortedMovies = unmonitoredMovies
+    .filter((movie) => {
+      if (availabilityFilter === "all") return true;
+      const isAvailable = movie.hasFile;
+      return (
+        (availabilityFilter === "available" && isAvailable) ||
+        (availabilityFilter === "missing" && !isAvailable)
+      );
+    })
+    .sort((a, b) => a.sortTitle.localeCompare(b.sortTitle));
 
   return (
     <Grid
       isLoading={isLoading}
-      searchBarPlaceholder={`Search missing movies on ${selectedInstance.name}...`}
+      searchBarPlaceholder={`Search unmonitored movies on ${selectedInstance.name}...`}
       columns={5}
       fit={Grid.Fit.Fill}
       aspectRatio="3/4"
       searchBarAccessory={
         <Grid.Dropdown
-          tooltip="Filter by Status"
-          value={statusFilter}
-          onChange={(value) => setStatusFilter(value as StatusFilter)}
+          tooltip="Filter by Availability"
+          value={availabilityFilter}
+          onChange={(value) => setAvailabilityFilter(value as AvailabilityFilter)}
         >
           <Grid.Dropdown.Item title="All Movies" value="all" />
-          <Grid.Dropdown.Item title="🔴 Missing" value="missing" />
-          <Grid.Dropdown.Item title="🟡 Upcoming" value="upcoming" />
-          <Grid.Dropdown.Item title="⚪ Not Released" value="not-released" />
+          <Grid.Dropdown.Item title="🟢 Available" value="available" />
+          <Grid.Dropdown.Item title="🟡 Missing" value="missing" />
         </Grid.Dropdown>
       }
     >
       {filteredAndSortedMovies.length === 0 ? (
         <Grid.EmptyView
           title={
-            statusFilter === "all"
-              ? "No Missing Movies"
-              : `No ${statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)} Movies`
+            availabilityFilter === "all"
+              ? "No Unmonitored Movies"
+              : `No ${availabilityFilter.charAt(0).toUpperCase() + availabilityFilter.slice(1)} Unmonitored Movies`
           }
           description={
-            statusFilter === "all"
-              ? "All monitored movies have been downloaded"
-              : `No movies match the ${statusFilter} filter`
+            availabilityFilter === "all"
+              ? "All movies in your library are currently being monitored"
+              : `No unmonitored movies match the ${availabilityFilter} filter`
           }
-          icon={Icon.Check}
+          icon={Icon.EyeDisabled}
         />
       ) : (
         filteredAndSortedMovies.map(movieGridItem)
