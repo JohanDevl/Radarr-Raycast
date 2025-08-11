@@ -99,7 +99,7 @@ ${movie.imdbId ? `- **IMDb:** [${movie.imdbId}](https://imdb.com/title/${movie.i
             <ActionPanel.Section>
               <Action.OpenInBrowser
                 title="Open in Radarr"
-                url={`${selectedInstance.url}/movie/${movie.id}`}
+                url={`${selectedInstance.url}/movie/${movie.tmdbId}`}
                 icon={Icon.Globe}
               />
               {movie.imdbId && (

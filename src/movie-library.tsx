@@ -62,7 +62,7 @@ export default function MovieLibrary() {
             <ActionPanel.Section>
               <Action.OpenInBrowser
                 title="Open in Radarr"
-                url={`${selectedInstance.url}/movie/${movie.id}`}
+                url={`${selectedInstance.url}/movie/${movie.tmdbId}`}
                 icon={Icon.Globe}
               />
               {movie.movieFile && (

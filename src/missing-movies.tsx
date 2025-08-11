@@ -137,12 +137,12 @@ ${movie.folder ? `- **Movie Folder:** ${movie.folder}` : ""}`}
             <ActionPanel.Section>
               <Action.OpenInBrowser
                 title="Open in Radarr"
-                url={`${selectedInstance.url}/movie/${movie.id}`}
+                url={`${selectedInstance.url}/movie/${movie.tmdbId}`}
                 icon={Icon.Globe}
               />
               <Action.OpenInBrowser
                 title="Search for Movie"
-                url={`${selectedInstance.url}/movie/${movie.id}#search`}
+                url={`${selectedInstance.url}/movie/${movie.tmdbId}#search`}
                 icon={Icon.MagnifyingGlass}
               />
               {movie.imdbId && (

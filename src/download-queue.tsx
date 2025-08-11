@@ -151,7 +151,7 @@ ${item.movie.overview || "No overview available"}`}
               />
               <Action.OpenInBrowser
                 title="Open Movie in Radarr"
-                url={`${selectedInstance.url}/movie/${item.movie.id}`}
+                url={`${selectedInstance.url}/movie/${item.movie.tmdbId}`}
                 icon={Icon.Globe}
               />
               {item.movie.imdbId && (
