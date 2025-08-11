@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { List, ActionPanel, Action, showToast, Toast, Icon, Color, confirmAlert, Alert } from "@raycast/api";
 
 import { getRadarrInstances, getDefaultRadarrInstance } from "./config";
 import { useQueue, removeQueueItem } from "./hooks/useRadarrAPI";
-import { formatMovieTitle, formatFileSize } from "./utils";
+import { formatMovieTitle, formatFileSize, formatOverview } from "./utils";
 import type { QueueItem, RadarrInstance } from "./types";
 
 export default function DownloadQueue() {
@@ -33,6 +33,19 @@ export default function DownloadQueue() {
   const { data: queueResponse, isLoading, error, mutate } = useQueue(selectedInstance);
   const queueItems = queueResponse?.records || [];
 
+  // Auto-refresh every 5 seconds if there are active downloads
+  useEffect(() => {
+    const hasActiveDownloads = queueItems.some(item => item.status === "downloading");
+    
+    if (hasActiveDownloads) {
+      const interval = setInterval(() => {
+        mutate();
+      }, 5000); // Refresh every 5 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [queueItems, mutate]);
+
   const getStatusColor = (status: string, trackedDownloadStatus: string): Color => {
     if (trackedDownloadStatus === "error") return Color.Red;
     if (trackedDownloadStatus === "warning") return Color.Yellow;
@@ -56,6 +69,12 @@ export default function DownloadQueue() {
     const percentage = Math.round((downloaded / item.size) * 100);
 
     return `${formatFileSize(downloaded)} / ${formatFileSize(item.size)} (${percentage}%)`;
+  };
+
+  const getProgressPercentage = (item: QueueItem): number => {
+    if (item.size === 0) return 0;
+    const downloaded = item.size - item.sizeleft;
+    return Math.round((downloaded / item.size) * 100);
   };
 
   const getTimeLeft = (item: QueueItem): string => {
@@ -104,6 +123,9 @@ export default function DownloadQueue() {
     const progress = formatProgress(item);
     const timeLeft = getTimeLeft(item);
 
+    // Show percentage for downloading items, status for others
+    const tagValue = item.status === "downloading" ? `${getProgressPercentage(item)}%` : item.status;
+
     const statusMessages = item.statusMessages.flatMap((sm) => sm.messages).join(", ");
 
     return (
@@ -111,18 +133,18 @@ export default function DownloadQueue() {
         key={item.id}
         icon={{ source: statusIcon, tintColor: statusColor }}
         title={item.title}
-        subtitle={formatMovieTitle(item.movie)}
+        subtitle={item.movie ? formatMovieTitle(item.movie) : "Processing..."}
         accessories={[
           { text: progress },
           ...(timeLeft !== "Unknown" ? [{ text: timeLeft }] : []),
-          { tag: { value: item.status, color: statusColor } },
+          { tag: { value: tagValue, color: statusColor } },
         ]}
         detail={
           <List.Item.Detail
             markdown={`# ${item.title}
 
 ## Movie
-**${formatMovieTitle(item.movie)}**
+**${item.movie ? formatMovieTitle(item.movie) : "Movie information not available"}**
 
 ## Download Details
 - **Status:** ${item.status}
@@ -137,7 +159,7 @@ export default function DownloadQueue() {
 ${statusMessages ? `## Status Messages\n${statusMessages}` : ""}
 
 ## Movie Overview
-${item.movie.overview || "No overview available"}`}
+${formatOverview(item.movie?.overview || "")}`}
           />
         }
         actions={
@@ -149,12 +171,14 @@ ${item.movie.overview || "No overview available"}`}
                 style={Action.Style.Destructive}
                 onAction={() => handleRemoveItem(item)}
               />
-              <Action.OpenInBrowser
-                title="Open Movie in Radarr"
-                url={`${selectedInstance.url}/movie/${item.movie.tmdbId}`}
-                icon={Icon.Globe}
-              />
-              {item.movie.imdbId && (
+              {item.movie?.tmdbId && (
+                <Action.OpenInBrowser
+                  title="Open Movie in Radarr"
+                  url={`${selectedInstance.url}/movie/${item.movie.tmdbId}`}
+                  icon={Icon.Globe}
+                />
+              )}
+              {item.movie?.imdbId && (
                 <Action.OpenInBrowser
                   title="Open in Imdb"
                   url={`https://imdb.com/title/${item.movie.imdbId}`}

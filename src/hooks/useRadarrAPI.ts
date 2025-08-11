@@ -55,7 +55,8 @@ export function useMovies(instance: RadarrInstance) {
 }
 
 export function useQueue(instance: RadarrInstance) {
-  return useRadarrAPI<{ records: QueueItem[] }>(instance, "/queue");
+  // Include movie details in queue response
+  return useRadarrAPI<{ records: QueueItem[] }>(instance, "/queue?includeMovie=true");
 }
 
 export function useCalendar(instance: RadarrInstance, start?: string, end?: string) {
