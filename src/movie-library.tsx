@@ -18,12 +18,7 @@ export default function MovieLibrary() {
     switchToInstance,
   } = useInstanceManager();
 
-  const {
-    data: movies,
-    isLoading,
-    error,
-    mutate,
-  } = useMovies(selectedInstance);
+  const { data: movies, isLoading, error, mutate } = useMovies(selectedInstance);
 
   const movieGridItem = (movie: Movie) => {
     const poster = getMoviePoster(movie);

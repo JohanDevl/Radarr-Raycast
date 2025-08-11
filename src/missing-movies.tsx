@@ -18,12 +18,7 @@ export default function MissingMovies() {
     switchToInstance,
   } = useInstanceManager();
 
-  const {
-    data: missingMoviesResponse,
-    isLoading,
-    error,
-    mutate,
-  } = useMissingMovies(selectedInstance);
+  const { data: missingMoviesResponse, isLoading, error, mutate } = useMissingMovies(selectedInstance);
   const missingMovies = missingMoviesResponse?.records;
 
   const getAvailabilityColor = (movie: Movie): Color => {

@@ -5,7 +5,7 @@ import { getRadarrInstances, getActiveRadarrInstance } from "./config";
 import { testConnection } from "./hooks/useRadarrAPI";
 import type { RadarrInstance } from "./types";
 
-export default function InstanceSwitcher() {
+export default function InstanceStatus() {
   const [instances, setInstances] = useState<RadarrInstance[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<Record<string, boolean | undefined>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -98,14 +98,12 @@ export default function InstanceSwitcher() {
         accessories={[
           { text: statusText },
           ...(isCurrentlySelected ? [{ tag: { value: "Selected", color: Color.Green } }] : []),
-          ...(instance.isDefault ? [{ tag: { value: "Default", color: Color.Blue } }] : []),
         ]}
         actions={
           <ActionPanel>
             <ActionPanel.Section>
               <Action title="Test Connection" icon={Icon.Network} onAction={() => handleTestConnection(instance)} />
               <Action.OpenInBrowser title="Open in Browser" url={instance.url} icon={Icon.Globe} />
-              <Action.Open title="Switch Active Instance" target="raycast://extensions/preferences" icon={Icon.Gear} />
             </ActionPanel.Section>
             <ActionPanel.Section title="Quick Actions">
               <Action.OpenInBrowser title="View Movie Library" url={`${instance.url}/movie`} icon={Icon.Video} />

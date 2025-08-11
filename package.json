@@ -135,8 +135,8 @@
     },
     {
       "name": "instance-switcher",
-      "title": "Switch Radarr Instance",
-      "description": "Manage and switch between Radarr instances",
+      "title": "Instance Status",
+      "description": "Monitor Radarr instance connection status",
       "mode": "view"
     },
     {

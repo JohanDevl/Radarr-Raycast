@@ -25,11 +25,7 @@ export default function UpcomingReleases() {
     data: calendarMovies,
     isLoading,
     error,
-  } = useCalendar(
-    selectedInstance,
-    today.toISOString().split("T")[0],
-    twoMonthsFromNow.toISOString().split("T")[0],
-  );
+  } = useCalendar(selectedInstance, today.toISOString().split("T")[0], twoMonthsFromNow.toISOString().split("T")[0]);
 
   const movieGridItem = (movie: CalendarMovie) => {
     const poster = getMoviePoster(movie);

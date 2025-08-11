@@ -14,12 +14,7 @@ export default function DownloadQueue() {
     switchToInstance,
   } = useInstanceManager();
 
-  const {
-    data: queueResponse,
-    isLoading,
-    error,
-    mutate,
-  } = useQueue(selectedInstance);
+  const { data: queueResponse, isLoading, error, mutate } = useQueue(selectedInstance);
   const queueItems = queueResponse?.records || [];
 
   // Auto-refresh every 5 seconds if there are active downloads
