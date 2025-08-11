@@ -1,16 +1,11 @@
 import React, { useState } from "react";
-import { List, ActionPanel, Action, showToast, Toast, Icon, Color } from "@raycast/api";
+import { Grid, ActionPanel, Action, showToast, Toast, Icon, Color } from "@raycast/api";
 
 import { getRadarrInstances, getDefaultRadarrInstance } from "./config";
 import { useMovies } from "./hooks/useRadarrAPI";
 import {
-  formatMovieTitle,
   getMoviePoster,
-  getRatingDisplay,
-  getGenresDisplay,
-  truncateText,
   getMovieStatus,
-  formatFileSize,
 } from "./utils";
 import type { Movie, RadarrInstance } from "./types";
 
@@ -46,64 +41,22 @@ export default function MovieLibrary() {
     return Color.SecondaryText;
   };
 
-  const movieListItem = (movie: Movie) => {
+  const movieGridItem = (movie: Movie) => {
     const poster = getMoviePoster(movie);
-    const rating = getRatingDisplay(movie);
-    const genres = getGenresDisplay(movie.genres);
-    const overview = movie.overview ? truncateText(movie.overview, 150) : "No overview available";
     const status = getMovieStatus(movie);
-    const statusColor = getStatusColor(movie);
 
-    const accessories = [
-      ...(movie.movieFile ? [{ text: formatFileSize(movie.movieFile.size) }] : []),
-      { tag: { value: status, color: statusColor } },
-    ];
+    // Create subtitle with year and status
+    const subtitle = `${movie.year} • ${status}`;
 
     return (
-      <List.Item
+      <Grid.Item
         key={movie.id}
-        icon={poster || Icon.Video}
-        title={formatMovieTitle(movie)}
-        subtitle={genres}
-        accessories={accessories}
-        detail={
-          <List.Item.Detail
-            markdown={`# ${formatMovieTitle(movie)}
-
-${poster ? `![Poster](${poster})` : ""}
-
-## Overview
-${overview}
-
-## Details
-- **Status:** ${status}
-- **Monitored:** ${movie.monitored ? "Yes" : "No"}
-- **Runtime:** ${movie.runtime ? `${movie.runtime} minutes` : "Unknown"}
-- **Genres:** ${genres || "Not specified"}
-${rating ? `- **Ratings:** ${rating}` : ""}
-${movie.imdbId ? `- **IMDb:** [${movie.imdbId}](https://imdb.com/title/${movie.imdbId})` : ""}
-
-## Technical Details
-- **Quality Profile ID:** ${movie.qualityProfileId}
-- **Root Folder:** ${movie.rootFolderPath}
-${movie.folder ? `- **Movie Folder:** ${movie.folder}` : ""}
-
-${
-  movie.movieFile
-    ? `## File Information
-- **Path:** ${movie.movieFile.path}
-- **Size:** ${formatFileSize(movie.movieFile.size)}
-- **Quality:** ${movie.movieFile.quality.quality.name}
-- **Date Added:** ${new Date(movie.movieFile.dateAdded).toLocaleDateString()}`
-    : ""
-}
-
-## Release Information
-${movie.inCinemas ? `- **In Cinemas:** ${new Date(movie.inCinemas).toDateString()}` : ""}
-${movie.digitalRelease ? `- **Digital Release:** ${new Date(movie.digitalRelease).toDateString()}` : ""}
-${movie.physicalRelease ? `- **Physical Release:** ${new Date(movie.physicalRelease).toDateString()}` : ""}`}
-          />
-        }
+        content={{
+          source: poster || Icon.Video,
+          fallback: Icon.Video,
+        }}
+        title={movie.title}
+        subtitle={subtitle}
         actions={
           <ActionPanel>
             <ActionPanel.Section>
@@ -153,8 +106,8 @@ ${movie.physicalRelease ? `- **Physical Release:** ${new Date(movie.physicalRele
 
   if (instances.length === 0) {
     return (
-      <List>
-        <List.EmptyView
+      <Grid>
+        <Grid.EmptyView
           title="No Radarr Instances Configured"
           description="Please configure your Radarr instances in preferences"
           icon={Icon.ExclamationMark}
@@ -164,14 +117,14 @@ ${movie.physicalRelease ? `- **Physical Release:** ${new Date(movie.physicalRele
             </ActionPanel>
           }
         />
-      </List>
+      </Grid>
     );
   }
 
   if (error) {
     return (
-      <List>
-        <List.EmptyView
+      <Grid>
+        <Grid.EmptyView
           title="Failed to Load Movies"
           description={`Error: ${error.message}`}
           icon={Icon.ExclamationMark}
@@ -181,23 +134,25 @@ ${movie.physicalRelease ? `- **Physical Release:** ${new Date(movie.physicalRele
             </ActionPanel>
           }
         />
-      </List>
+      </Grid>
     );
   }
 
   const sortedMovies = movies?.sort((a, b) => a.sortTitle.localeCompare(b.sortTitle)) || [];
 
   return (
-    <List
+    <Grid
       isLoading={isLoading}
       searchBarPlaceholder={`Search movie library on ${selectedInstance.name}...`}
-      isShowingDetail
+      columns={5}
+      fit={Grid.Fit.Fill}
+      aspectRatio="3/4"
     >
       {sortedMovies.length === 0 ? (
-        <List.EmptyView title="No Movies Found" description="Your movie library is empty" icon={Icon.Video} />
+        <Grid.EmptyView title="No Movies Found" description="Your movie library is empty" icon={Icon.Video} />
       ) : (
-        sortedMovies.map(movieListItem)
+        sortedMovies.map(movieGridItem)
       )}
-    </List>
+    </Grid>
   );
 }
