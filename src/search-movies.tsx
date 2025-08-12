@@ -79,9 +79,7 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
     // Check if movie is already in library using our manual verification
     const isAlreadyAdded = existingMovies.has(movie.tmdbId);
 
-    const accessories = [
-      ...(isAlreadyAdded ? [{ icon: Icon.Check, tooltip: "Already in library" }] : []),
-    ];
+    const accessories = [...(isAlreadyAdded ? [{ icon: Icon.Check, tooltip: "Already in library" }] : [])];
 
     return (
       <List.Item
