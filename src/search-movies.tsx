@@ -80,8 +80,6 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
     const isAlreadyAdded = existingMovies.has(movie.tmdbId);
 
     const accessories = [
-      ...(rating ? [{ text: rating }] : []),
-      ...(movie.runtime ? [{ text: `${movie.runtime}min` }] : []),
       ...(isAlreadyAdded ? [{ icon: Icon.Check, tooltip: "Already in library" }] : []),
     ];
 
@@ -90,7 +88,6 @@ export default function SearchMovies(props: LaunchProps<{ arguments: Arguments }
         key={movie.tmdbId}
         icon={poster || Icon.Video}
         title={formatMovieTitle(movie)}
-        subtitle={genres}
         accessories={accessories}
         detail={
           <List.Item.Detail
