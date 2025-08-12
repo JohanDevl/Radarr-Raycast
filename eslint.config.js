@@ -1,3 +1,8 @@
 const raycastConfig = require("@raycast/eslint-config");
 
-module.exports = raycastConfig;
+// Flatten the config array to handle nested arrays
+function flattenConfig(config) {
+  return config.flatMap((item) => (Array.isArray(item) ? item : [item]));
+}
+
+module.exports = flattenConfig(raycastConfig);
