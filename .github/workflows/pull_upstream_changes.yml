@@ -2,8 +2,8 @@ name: Pull upstream changes from the `raycast/extensions` repo
 
 on:
   schedule:
-    # This workflow will automatically run at 5am each day...
-    - cron:  '0 5 * * *'
+  # This workflow will automatically run at 5am once per week (Monday)...
+  - cron: '0 5 * * 1'
   # ...and you can also trigger it manually from GitHub's UI.
   workflow_dispatch:
 
