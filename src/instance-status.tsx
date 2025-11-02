@@ -109,7 +109,7 @@ export default function InstanceStatus() {
     );
 
     return (
-      <List.Section key={instance.name} title={instance.name} subtitle={statusText}>
+      <List.Section key={instance.name} title={instance.name}>
         <List.Item
           icon={statusIcon}
           title={instance.name}
