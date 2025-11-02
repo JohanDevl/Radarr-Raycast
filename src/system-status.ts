@@ -1,7 +1,8 @@
 import { showHUD, showToast, Toast } from "@raycast/api";
-import { getRadarrInstances } from "./config";
-import { testConnection } from "./hooks/useRadarrAPI";
-import type { RadarrInstance, HealthCheck } from "./types";
+import { getRadarrInstances } from "@/lib/types/config";
+import { testConnection } from "@/lib/hooks/useRadarrAPI";
+import type { RadarrInstance } from "@/lib/types/config";
+import type { HealthCheck } from "@/lib/types/system";
 
 interface SystemHealthSummary {
   instance: RadarrInstance;

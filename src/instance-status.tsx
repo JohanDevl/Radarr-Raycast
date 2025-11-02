@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { List, ActionPanel, Action, showToast, Toast, Icon, Color } from "@raycast/api";
 
-import { getRadarrInstances, getActiveRadarrInstance } from "./config";
-import { testConnection } from "./hooks/useRadarrAPI";
-import type { RadarrInstance } from "./types";
+import { getRadarrInstances, getActiveRadarrInstance } from "@/lib/types/config";
+import { testConnection } from "@/lib/hooks/useRadarrAPI";
+import type { RadarrInstance } from "@/lib/types/config";
 
 export default function InstanceStatus() {
   const [instances, setInstances] = useState<RadarrInstance[]>([]);
